@@ -89,7 +89,7 @@ CmdType StrToCmdType(std::string_view command) {
     }
 }
 
-//TODO: integrate or leave separate?
+//TODO: possibly integrate
 //    } else if(command == GET_STAT_COMMAND) {
 //        return CmdType::GetRouteStat;
 
@@ -154,7 +154,7 @@ void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) 
 }
 
 
-// TODO: can process stat requests in the same queue?
+// TODO: can process stat requests in the same queue, mb leave just one class for i/o
 //            case CmdType::GetRouteStat: {
 //                auto stat = catalogue.GetRouteStats(cmd.id);
 //                if(!stat.has_value()) {

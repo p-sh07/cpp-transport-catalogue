@@ -16,23 +16,26 @@ static const std::string NEW_ROUTE = "Bus";
 enum class CmdType {
     NewStop      = 1,
     NewRoute     = 2,
-    //GetRouteStat = 3,
+    AddStopDist  = 3,
     Unknown      = 100,
     Empty        = 101,
 };
 
 // Stores all command data
 struct CmdInfo {
+    CmdInfo(CmdType type, std::string id = "", std::string description = "");
     // check if command is valid/not empty
     explicit operator bool() const {
-        return type != CmdType::Empty;
+        return type != CmdType::Empty
+        && !id.empty()
+        && !description.empty();
     }
     
     bool operator!() const {
         return !operator bool();
     }
     
-    CmdType type;     // Command type
+    CmdType type;             // Command type
     std::string id;           // route or stop id
     std::string description;  // other parameters
 };

@@ -7,14 +7,18 @@
 using input::CmdType;
 using input::CmdInfo;
 
+using transport::StopDistances;
+
 /**
- * Парсит строку вида "10.123,  -30.1837" и возвращает пару координат (широта, долгота)
+ * Парсит строку вида "10.123,  -30.1837, ... " и возвращает пару координат (широта, долгота)
  */
 geo::Coordinates ParseCoordinates(std::string_view str) {
     static const double nan = std::nan("");
     
     auto not_space = str.find_first_not_of(' ');
     auto comma = str.find(',');
+    //second comma for cutoff
+    auto comma2 = str.find(',', comma+1);
     
     if (comma == str.npos) {
         return {nan, nan};
@@ -23,7 +27,10 @@ geo::Coordinates ParseCoordinates(std::string_view str) {
     auto not_space2 = str.find_first_not_of(' ', comma + 1);
     
     double lat = std::stod(std::string(str.substr(not_space, comma - not_space)));
-    double lng = std::stod(std::string(str.substr(not_space2)));
+    double lng = std::stod(std::string(str.substr(not_space2, comma2 - not_space2)));
+    
+    //cut coords from string view
+    //str.remove_prefix(comma2);
     
     return {lat, lng};
 }
@@ -77,6 +84,42 @@ std::vector<std::string_view> ParseRoute(std::string_view route) {
     return results;
 }
 
+std::pair<std::string_view, int> ParseDistAndName(std::string_view str) {
+    //Format:"  D1m  to  stop  "
+    size_t m_symbol = str.find('m');
+    
+    if (m_symbol == str.npos) {
+        std::cerr << "*** Incorrect stop distance format" << std::endl;
+        return {};
+    }
+    
+    Trim(str);
+    int dist = std::stoi(std::string(str.substr(0, m_symbol)));
+    
+    size_t to_symbol = str.find("to");
+    
+    if (to_symbol == str.npos) {
+        std::cerr << "*** Incorrect stop distance format" << std::endl;
+        return {};
+    }
+    
+    str.remove_prefix(to_symbol+2);
+    
+    return std::make_pair(Trim(str), dist);
+    
+}
+
+StopDistances ParseStopDistances(std::string_view stops_dist_str) {
+    //Stop X: latitude, longitude, D1m to stop1, D2m to stop2, ...
+    auto stops_distances_strings = Split(stops_dist_str, ',');
+    StopDistances distances_to_stops;
+    //skip first 2, they are the coords
+    for(const auto& dist_and_name_str : stops_distances_strings) {
+        distances_to_stops.emplace(ParseDistAndName(dist_and_name_str));
+    }
+    return distances_to_stops;
+}
+
 CmdType StrToCmdType(std::string_view command) {
     if(command == input::NEW_STOP) {
         return CmdType::NewStop;
@@ -89,49 +132,73 @@ CmdType StrToCmdType(std::string_view command) {
     }
 }
 
-//TODO: possibly integrate
-//    } else if(command == GET_STAT_COMMAND) {
-//        return CmdType::GetRouteStat;
-
-CmdInfo ParseCommandDescription(std::string_view line) {
+CmdInfo ParseCommandDescription(std::string_view line, bool get_distances = false) {
     auto colon_pos = line.find(':');
     if (colon_pos == line.npos) {
-        return {};
+        return {CmdType::Empty};
     }
     
     auto space_pos = line.find(' ');
     if (space_pos >= colon_pos) {
-        return {};
+        return {CmdType::Empty};
     }
     
     auto not_space = line.find_first_not_of(' ', space_pos);
     if (not_space >= colon_pos) {
-        return {};
+        return {CmdType::Empty};
     }
     
-    return { StrToCmdType(line.substr(0, space_pos)),
-             std::string(line.substr(not_space, colon_pos - not_space)),
-             std::string(line.substr(colon_pos + 1)) };
+    auto cmd_type = StrToCmdType(line.substr(0, space_pos));
+    std::string id = std::string(line.substr(not_space, colon_pos - not_space));
+    std::string_view description = line.substr(colon_pos + 1);
+    
+    if(cmd_type == CmdType::NewStop) {
+        //Stop X: latitude, longitude, D1m to stop1, D2m to stop2, ...
+        auto first_comma = line.find(',', colon_pos);
+        auto second_comma = line.find(',', first_comma+1);
+        
+        if(get_distances) {
+            //invalid only if distances are expected:
+            if(second_comma == line.npos) {
+                return {CmdType::Empty};
+            }
+            
+            description = line.substr(second_comma + 1); //pass distances
+            //change cmd type
+            cmd_type = CmdType::AddStopDist;
+        } else {
+            description = second_comma == line.npos
+            ? line.substr(colon_pos + 1) //distances were not included in command
+            : line.substr(colon_pos + 1, second_comma - (colon_pos + 1)); //coords excluding dists
+        }
+    }
+    
+    return { cmd_type, std::string(id), std::string(description) };
+}
+
+CmdInfo::CmdInfo(CmdType type, std::string id, std::string description)
+: type(type), id(id), description(description) {
+    if(id.empty() || description.empty()) {
+        type = CmdType::Empty;
+    }
 }
 
 void InputReader::ParseLine(std::string_view line) {
     auto command = ParseCommandDescription(line);
-    
-    if(command.type == CmdType::Unknown) {
-        //TODO: throw()/error processing
-        std::cerr << "*** Unknown command ***" << std::endl;
-    } 
-    else if(command.type == CmdType::Empty) {
-        //TODO: throw()/error processing/ignore?
-        std::cerr << "*** Empty command ***" << std::endl;
-    } 
-    else {
+    if(command) {
         commands_.push_back(std::move(command));
+    }
+    //push back & parse a second time to get distances
+    if(command.type == CmdType::NewStop) {
+        //set bool param to true to get distances string
+        auto dist_command = ParseCommandDescription(line, true);
+        if(dist_command) {
+            commands_.push_back(std::move(dist_command));
+        }
     }
 }
 
 void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) {
-    // Use std::sort as more efficient in case of expanded command set
     std::sort(commands_.begin(), commands_.end(),
               [](const CmdInfo& lhs, const CmdInfo& rhs) {
         return lhs.type < rhs.type;
@@ -145,6 +212,15 @@ void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) 
             case CmdType::NewRoute:
                 catalogue.AddRoute(std::move(cmd.id), ParseRoute(cmd.description));
                 break;
+            case CmdType::AddStopDist:
+                //string_views passed to function stay valid until end of cycle
+                catalogue.AddStopDistances(cmd.id, ParseStopDistances(cmd.description));
+                //NB. All stops guaranteed to be present in the same input
+                break;
+                
+            case CmdType::Empty:
+                std::cerr << "*** Empty command during processing" << std::endl;
+                break;
 
             default:
                 break;
@@ -152,20 +228,3 @@ void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) 
         }
     }
 }
-
-
-// TODO: can process stat requests in the same queue, mb leave just one class for i/o
-//            case CmdType::GetRouteStat: {
-//                auto stat = catalogue.GetRouteStats(cmd.id);
-//                if(!stat.has_value()) {
-//                }
-//                break;
-//            }
-                
-// Are not inserted in queue so far:
-//                        case CmdType::Unknown:
-//
-//                           break;
-//                        case CmdType::Empty:
-//
-//                           break;

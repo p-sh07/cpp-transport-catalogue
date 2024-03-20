@@ -17,7 +17,8 @@ void PrintRouteInfo(string_view route_id, const TransportCatalogue& tansport_cat
     output << std::setprecision(6)
     << stats.total_stops << " stops on route, "s
     << stats.unique_stops << " unique stops, "s
-    << stats.length << " route length\n"s;
+    << stats.road_dist << " route length "s
+    << stats.curvature << " curvature\n"s;
 }
 
 void PrintBusInfo(string_view stop_id, const TransportCatalogue& tansport_catalogue, std::ostream& output) {

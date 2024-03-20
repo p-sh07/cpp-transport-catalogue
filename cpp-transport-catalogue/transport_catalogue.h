@@ -36,7 +36,7 @@ struct Route {
 struct RouteStats {
     size_t total_stops = 0;
     size_t unique_stops = 0;
-    int road_dist = 0;
+    double road_dist = 0.0;
     double curvature = 0.0;
 };
 
@@ -68,11 +68,6 @@ public:
     
     std::optional<transport::RouteStats> GetRouteStats(std::string_view route_name) const;
     std::optional<transport::StopStats> GetStopStats(std::string_view stop_name) const;
-    
-//    size_t GetStopId(std::string_view stop_name) {
-//        auto str_hasher = std::hash<string_view>;
-//        return str_hasher(stop_name);
-//    }
     
 private:
     using StopPair = std::pair<const transport::Stop*, const transport::Stop*>;

@@ -55,14 +55,14 @@ std::optional<RouteStats> TransportCatalogue::GetRouteStats(string_view route_na
     //prev stop in route for distance calculation
     const Stop* prev_stop = nullptr;
     double route_geo_length = 0.0;
-    int route_road_dist = 0;
+    double route_road_dist = 0.0;
     
     for(const auto& stop : route->stops) {
         route_geo_length += GetGeoDistance(prev_stop, stop);
         route_road_dist += GetRoadDistance(prev_stop, stop);
         prev_stop = stop;
     }
-    double curvature = (route_road_dist * 1.0)/route_geo_length;
+    double curvature = route_road_dist/route_geo_length;
     
     return {{route->stops.size(), GetUniqueStops(route).size(), route_road_dist, curvature}};
 }
@@ -105,14 +105,14 @@ double TransportCatalogue::GetGeoDistance(const Stop* from, const Stop* to) cons
     geo_distance_table_[stop_pair] = dist;
     return dist;
 }
-
+//All distances are whole positive numbers -> int or size_t
 int TransportCatalogue::GetRoadDistance(const Stop* from, const Stop* to) const {
     //invalid stop pointers
     if(!from || !to) {
         return 0;
     }
     auto it = road_distance_table_.find({from, to});
-    //if from-to not found, use from-to dist
+    //if from - to not found, use to - from dist
     if(it == road_distance_table_.end()) {
         it = road_distance_table_.find({to, from});
     }

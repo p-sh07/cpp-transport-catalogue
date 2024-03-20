@@ -4,13 +4,6 @@
 
 namespace geo {
 struct Coordinates {
-    //limit the coordinates to 6 digits from decimal point
-//    Coordinates(double x, double y) {
-//        double decimals = 1000000.0;
-//        lat = std::floor(x * decimals) / decimals;
-//        lng = std::floor(y * decimals) / decimals;
-//    }
-    
     double lat;
     double lng;
     bool operator==(const Coordinates& other) const {

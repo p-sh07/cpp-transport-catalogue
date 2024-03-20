@@ -12,8 +12,8 @@ using namespace std;
 int main() {
     TransportCatalogue catalogue;
 
-    //auto& input = std::cin;
-    ifstream input("../../../../../input1.txt");
+    auto& input = std::cin;
+    //ifstream input("../../../../../input1.txt");
     //ifstream input("../../../../../tsC_case1_input.txt");
     
     int base_request_count;

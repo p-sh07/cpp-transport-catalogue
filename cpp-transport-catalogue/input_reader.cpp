@@ -17,20 +17,19 @@ geo::Coordinates ParseCoordinates(std::string_view str) {
     
     auto not_space = str.find_first_not_of(' ');
     auto comma = str.find(',');
-    //second comma for cutoff
-    auto comma2 = str.find(',', comma+1);
     
     if (comma == str.npos) {
         return {nan, nan};
     }
     
     auto not_space2 = str.find_first_not_of(' ', comma + 1);
+    //second comma for cutoff
+    auto comma2 = str.find(',', comma+1);
     
     double lat = std::stod(std::string(str.substr(not_space, comma - not_space)));
-    double lng = std::stod(std::string(str.substr(not_space2, comma2 - not_space2)));
-    
-    //cut coords from string view
-    //str.remove_prefix(comma2);
+    double lng = comma2 == str.npos
+    ? std::stod(std::string(str.substr(not_space2)); //if no stops dists after coord
+    : std::stod(std::string(str.substr(not_space2, comma2 - not_space2)));
     
     return {lat, lng};
 }
@@ -106,14 +105,13 @@ std::pair<std::string_view, int> ParseDistAndName(std::string_view str) {
     str.remove_prefix(to_symbol+2);
     
     return std::make_pair(Trim(str), dist);
-    
 }
 
 StopDistances ParseStopDistances(std::string_view stops_dist_str) {
-    //Stop X: latitude, longitude, D1m to stop1, D2m to stop2, ...
+    // [Stop X: latitude, longitude,] D1m to stop1, D2m to stop2, ...
     auto stops_distances_strings = Split(stops_dist_str, ',');
     StopDistances distances_to_stops;
-    //skip first 2, they are the coords
+    
     for(const auto& dist_and_name_str : stops_distances_strings) {
         distances_to_stops.emplace(ParseDistAndName(dist_and_name_str));
     }

@@ -39,11 +39,12 @@ void TransportCatalogue::AddRoute(std::string&& route_name, const std::vector<st
     route_index_[route_to_add->name] = route_to_add;
     AddRouteToStops(route_to_add);
 }
-
-void TransportCatalogue::AddStopDistances(std::string_view stop_name, const StopDistances& distances) {
+/// Не стал менять эту функцию полностью, чтобы не писать цикл в input_reader.cpp (строка 215), а оставить там вызов этого метода одной строчкой. Ведь совсем без контейнера или цикла тут не обойтись? (у нас же потенциально много расстояний добавляется за один вызов...)
+/// Добавил отдельный метод SetDistance на тот случай, если в будущем внутреннее устройство или логику добавления расстояний нужно будет изменить + поменял контейнер StopDistance с map на vector, т.к. да, функционал словаря здесь избыточен =)
+void TransportCatalogue::AddRoadDistances(std::string_view stop_name, const StopDistances& distances) {
     auto from_stop = stop_index_.at(stop_name);
     for(const auto& [to_stop_name, dist] : distances) {
-        road_distance_table_[{from_stop, stop_index_.at(to_stop_name)}] = dist;
+        SetRoadDistance(from_stop, stop_index_.at(to_stop_name), dist);
     }
 }
 
@@ -90,21 +91,10 @@ void TransportCatalogue::AddRouteToStops(const Route* route) {
     }
 }
 
-double TransportCatalogue::GetGeoDistance(const Stop* from, const Stop* to) const {
-    //invalid stop pointers
-    if(!from || !to) {
-        return 0.0;
-    }
-    //use pair for convenience
-    auto stop_pair = std::make_pair(from, to);
-    if(geo_distance_table_.count(stop_pair) > 0) {
-        return geo_distance_table_.at(stop_pair);
-    }
-    //compute if not found
-    double dist = geo::ComputeDistance(from->location, to->location);
-    geo_distance_table_[stop_pair] = dist;
-    return dist;
+void TransportCatalogue::SetRoadDistance(const transport::Stop* from, const transport::Stop* to, int dist) {
+    road_distance_table_[{from, to}] = dist;
 }
+
 //All distances are whole positive numbers -> int or size_t
 int TransportCatalogue::GetRoadDistance(const Stop* from, const Stop* to) const {
     //invalid stop pointers
@@ -122,6 +112,22 @@ int TransportCatalogue::GetRoadDistance(const Stop* from, const Stop* to) const 
     }
     //
     return it == road_distance_table_.end() ? -1 : it->second;
+}
+
+double TransportCatalogue::GetGeoDistance(const Stop* from, const Stop* to) const {
+    //invalid stop pointers
+    if(!from || !to) {
+        return 0.0;
+    }
+    //use pair for convenience
+    auto stop_pair = std::make_pair(from, to);
+    if(geo_distance_table_.count(stop_pair) > 0) {
+        return geo_distance_table_.at(stop_pair);
+    }
+    //compute if not found
+    double dist = geo::ComputeDistance(from->location, to->location);
+    geo_distance_table_[stop_pair] = dist;
+    return dist;
 }
 
 std::unordered_set<const transport::Stop*> TransportCatalogue::GetUniqueStops(const Route* route) const {

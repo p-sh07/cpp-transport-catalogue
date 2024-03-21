@@ -17,7 +17,7 @@
 
 namespace transport {
 
-using StopDistances = std::unordered_map<std::string_view, int>;
+using StopDistances = std::vector<std::pair<std::string_view, int>>;
 
 struct Stop {
     explicit Stop(std::string&& stop_name, geo::Coordinates coords);
@@ -64,7 +64,7 @@ public:
     }
     void AddStop(std::string&& stop_name, geo::Coordinates coords);
     void AddRoute(std::string&& route_name, const std::vector<std::string_view>& stops);
-    void AddStopDistances(std::string_view stop_name, const transport::StopDistances& distances);
+    void AddRoadDistances(std::string_view stop_name, const transport::StopDistances& distances);
     
     std::optional<transport::RouteStats> GetRouteStats(std::string_view route_name) const;
     std::optional<transport::StopStats> GetStopStats(std::string_view stop_name) const;
@@ -73,8 +73,11 @@ private:
     using StopPair = std::pair<const transport::Stop*, const transport::Stop*>;
     
     std::vector<const transport::Stop*> GetStopPtrs(const std::vector<std::string_view>& route_stops) const;
-    double GetGeoDistance(const transport::Stop* from, const transport::Stop* to) const;
+    
+    void SetRoadDistance(const transport::Stop* from, const transport::Stop* to, int dist);
     int GetRoadDistance(const transport::Stop* from, const transport::Stop* to) const;
+    double GetGeoDistance(const transport::Stop* from, const transport::Stop* to) const;
+    
     void AddRouteToStops(const transport::Route* route);
     std::unordered_set<const transport::Stop*> GetUniqueStops(const transport::Route*) const;
 

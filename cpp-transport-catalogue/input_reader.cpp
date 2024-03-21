@@ -28,7 +28,7 @@ geo::Coordinates ParseCoordinates(std::string_view str) {
     
     double lat = std::stod(std::string(str.substr(not_space, comma - not_space)));
     double lng = comma2 == str.npos
-    ? std::stod(std::string(str.substr(not_space2)); //if no stops dists after coord
+    ? std::stod(std::string(str.substr(not_space2))) //if no stops dists after coord
     : std::stod(std::string(str.substr(not_space2, comma2 - not_space2)));
     
     return {lat, lng};
@@ -113,7 +113,7 @@ StopDistances ParseStopDistances(std::string_view stops_dist_str) {
     StopDistances distances_to_stops;
     
     for(const auto& dist_and_name_str : stops_distances_strings) {
-        distances_to_stops.emplace(ParseDistAndName(dist_and_name_str));
+        distances_to_stops.push_back(ParseDistAndName(dist_and_name_str));
     }
     return distances_to_stops;
 }
@@ -212,7 +212,7 @@ void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) 
                 break;
             case CmdType::AddStopDist:
                 //string_views passed to function stay valid until end of cycle
-                catalogue.AddStopDistances(cmd.id, ParseStopDistances(cmd.description));
+                catalogue.AddRoadDistances(cmd.id, ParseStopDistances(cmd.description));
                 //NB. All stops guaranteed to be present in the same input
                 break;
                 

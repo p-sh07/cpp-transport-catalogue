@@ -23,7 +23,7 @@ enum class CmdType {
 
 // Stores all command data
 struct CmdInfo {
-    CmdInfo(CmdType type, std::string id = "", std::string description = "");
+    CmdInfo(CmdType type = CmdType::Empty, std::string id = "", std::string description = "");
     // check if command is valid/not empty
     explicit operator bool() const {
         return type != CmdType::Empty

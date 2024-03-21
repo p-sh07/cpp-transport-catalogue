@@ -133,17 +133,17 @@ CmdType StrToCmdType(std::string_view command) {
 CmdInfo ParseCommandDescription(std::string_view line, bool get_distances = false) {
     auto colon_pos = line.find(':');
     if (colon_pos == line.npos) {
-        return {CmdType::Empty};
+        return {};
     }
     
     auto space_pos = line.find(' ');
     if (space_pos >= colon_pos) {
-        return {CmdType::Empty};
+        return {};
     }
     
     auto not_space = line.find_first_not_of(' ', space_pos);
     if (not_space >= colon_pos) {
-        return {CmdType::Empty};
+        return {};
     }
     
     auto cmd_type = StrToCmdType(line.substr(0, space_pos));
@@ -158,7 +158,7 @@ CmdInfo ParseCommandDescription(std::string_view line, bool get_distances = fals
         if(get_distances) {
             //invalid only if distances are expected:
             if(second_comma == line.npos) {
-                return {CmdType::Empty};
+                return {};
             }
             
             description = line.substr(second_comma + 1); //pass distances

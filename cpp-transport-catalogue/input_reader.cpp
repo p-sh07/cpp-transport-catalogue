@@ -7,8 +7,6 @@
 using input::CmdType;
 using input::CmdInfo;
 
-using transport::StopDistances;
-
 /**
  * Парсит строку вида "10.123,  -30.1837, ... " и возвращает пару координат (широта, долгота)
  */
@@ -107,15 +105,9 @@ std::pair<std::string_view, int> ParseDistAndName(std::string_view str) {
     return std::make_pair(Trim(str), dist);
 }
 
-StopDistances ParseStopDistances(std::string_view stops_dist_str) {
+std::vector<std::string_view> ParseStopDistances(std::string_view stops_dist_str) {
     // [Stop X: latitude, longitude,] D1m to stop1, D2m to stop2, ...
-    auto stops_distances_strings = Split(stops_dist_str, ',');
-    StopDistances distances_to_stops;
-    
-    for(const auto& dist_and_name_str : stops_distances_strings) {
-        distances_to_stops.push_back(ParseDistAndName(dist_and_name_str));
-    }
-    return distances_to_stops;
+    return Split(stops_dist_str, ',');
 }
 
 CmdType StrToCmdType(std::string_view command) {
@@ -211,9 +203,11 @@ void InputReader::ApplyCommands([[maybe_unused]] TransportCatalogue& catalogue) 
                 catalogue.AddRoute(std::move(cmd.id), ParseRoute(cmd.description));
                 break;
             case CmdType::AddStopDist:
-                //string_views passed to function stay valid until end of cycle
-                catalogue.AddRoadDistances(cmd.id, ParseStopDistances(cmd.description));
-                //NB. All stops guaranteed to be present in the same input
+                //string_views stay valid until end of cycle
+                for(const auto& stop_dist_str : ParseStopDistances(cmd.description)) {
+                    const auto [to_stop_name, distance] = ParseDistAndName(stop_dist_str);
+                    catalogue.SetRoadDistance(cmd.id, to_stop_name, distance);
+                }
                 break;
                 
             case CmdType::Empty:

@@ -8,7 +8,6 @@ using transport::Stop;
 using transport::Route;
 using transport::StopStats;
 using transport::RouteStats;
-using transport::StopDistances;
 
 //DEBUG
 #include <iostream>
@@ -39,13 +38,10 @@ void TransportCatalogue::AddRoute(std::string&& route_name, const std::vector<st
     route_index_[route_to_add->name] = route_to_add;
     AddRouteToStops(route_to_add);
 }
-/// Не стал менять эту функцию полностью, чтобы не писать цикл в input_reader.cpp (строка 215), а оставить там вызов этого метода одной строчкой. Ведь совсем без контейнера или цикла тут не обойтись? (у нас же потенциально много расстояний добавляется за один вызов...)
-/// Добавил отдельный метод SetDistance на тот случай, если в будущем внутреннее устройство или логику добавления расстояний нужно будет изменить + поменял контейнер StopDistance с map на vector, т.к. да, функционал словаря здесь избыточен =)
-void TransportCatalogue::AddRoadDistances(std::string_view stop_name, const StopDistances& distances) {
-    auto from_stop = stop_index_.at(stop_name);
-    for(const auto& [to_stop_name, dist] : distances) {
-        SetRoadDistance(from_stop, stop_index_.at(to_stop_name), dist);
-    }
+
+//Теперь всё понятно =)!
+void TransportCatalogue::SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist) {
+    road_distance_table_[{stop_index_.at(from_stop_name), stop_index_.at(to_stop_name)}] = dist;
 }
 
 std::optional<RouteStats> TransportCatalogue::GetRouteStats(string_view route_name) const {
@@ -89,10 +85,6 @@ void TransportCatalogue::AddRouteToStops(const Route* route) {
     for(const auto& stop : route->stops) {
         stops_to_routes_[stop->name].insert(route->name);
     }
-}
-
-void TransportCatalogue::SetRoadDistance(const transport::Stop* from, const transport::Stop* to, int dist) {
-    road_distance_table_[{from, to}] = dist;
 }
 
 //All distances are whole positive numbers -> int or size_t

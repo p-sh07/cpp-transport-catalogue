@@ -18,6 +18,7 @@ int main() {
     //ifstream in("../../../../../input.json");
     
     jreader.ParseInput(in);
-    jreader.ProcessStatRequests(std::cout);
+    jreader.ProcessStatRequests();
+    jreader.PrintRequestAnswers(std::cout);
     
 }

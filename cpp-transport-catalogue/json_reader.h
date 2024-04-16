@@ -108,8 +108,8 @@ public:
     virtual ~DatabaseWriter() = default;
     
     void ProcessDatabaseCommands();
-    
-    virtual void ProcessStatRequests(std::ostream& out) = 0;
+    virtual void ProcessStatRequests() = 0;
+    virtual void PrintRequestAnswers(std::ostream& out) const = 0;
     
 protected:
     TransportDb& database_;
@@ -125,8 +125,8 @@ public:
     ~JsonReader() override = default;
     
     void ParseInput(std::istream& in);
-    
-    void ProcessStatRequests(std::ostream& out) override;
+    void ProcessStatRequests() override;
+    void PrintRequestAnswers(std::ostream& out) const override;
     
 private:
     const RequestHandler& r_handler_;
@@ -135,20 +135,22 @@ private:
     json::Dict MakeStatJson(const StopStat& stat) const;
     
     template <typename Stat>
-    void PrintStat(const Stat& stat, std::ostream& out) const;
+    void StoreRequestAnswer(const Stat& stat);
     
-    json::Dict parsed_json_;
-
+    json::Dict parsed_json_ = {};
+    json::Array request_replies_ = {};
 };
 
 using namespace std::literals;
+
 template <typename Stat>
-void JsonReader::PrintStat(const Stat& stat, std::ostream& out) const {
+void JsonReader::StoreRequestAnswer(const Stat& stat) {
     //make the Json document, format:
     json::Dict answer = { {"request_id"s, {stat.request_id}},
         {"error_message"s, {"not found"s}} };
     if(stat.exists) {
         answer = MakeStatJson(stat);
     }
-    json::Print(json::Document{{answer}}, out);
+    json::Node node(answer);
+    request_replies_.push_back(node);
 }

@@ -61,7 +61,7 @@ BusData::BusData(CommandType type, std::string name, std::vector<std::string> st
 bool BusData::ApplyCommand(TransportDb& database) {
     std::vector<std::string_view> bus_stops {stops_.begin(), stops_.end()};
     //add stops in reverse order, skipping last one
-    if(is_roundtrip_) {
+    if(!is_roundtrip_) {
         bus_stops.insert(bus_stops.end(), std::next(stops_.rbegin()), stops_.rend());
     }
     
@@ -107,9 +107,11 @@ void JsonReader::ParseInput(std::istream& in) {
         if(dict.at("type"s).AsString() == "Stop"s) {
             //build road distances map:
             std::unordered_map<std::string, int> distances;
+            
             for(const auto& [name, dist] : dict.at("road_distances").AsMap()) {
                 distances[name] = dist.AsInt();
             }
+            
             //TODO: std::move on a const object, how to move string from the json?
             cmd::StopData stop_info(cmd::NewStop,
                 std::move(dict.at("name"s).AsString()),
@@ -165,7 +167,7 @@ json::Dict JsonReader::MakeStatJson(const StopStat& stat) const {
 }
 
 
-void JsonReader::ProcessStatRequests(std::ostream& out) {
+void JsonReader::ProcessStatRequests() {
     while(!stat_requests_.empty()) {
         //TODO: std::variant<BusStat, StopStat> stats; ? maybe too complex for the task
         
@@ -178,14 +180,18 @@ void JsonReader::ProcessStatRequests(std::ostream& out) {
         }
         
         if(request->type == cmd::GetBusStat) {
-            BusStat answer = r_handler_.GetBusStat(request->id, request->name);
+            BusStat stat = r_handler_.GetBusStat(request->id, request->name);
             
-            PrintStat(answer, out);
+            StoreRequestAnswer(stat);
         }
         else if(request->type == cmd::GetStopStat) {
-            StopStat answer = r_handler_.GetStopStat(request->id, request->name);
+            StopStat stat = r_handler_.GetStopStat(request->id, request->name);
             
-            PrintStat(answer, out);
+            StoreRequestAnswer(stat);
         }
     }
+}
+
+void JsonReader::PrintRequestAnswers(std::ostream& out) const {
+    json::Print(json::Document{{request_replies_}}, out);
 }

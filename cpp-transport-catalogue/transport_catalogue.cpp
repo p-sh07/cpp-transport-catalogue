@@ -4,91 +4,77 @@ using std::string;
 using std::string_view;
 using std::vector;
 
-using transport::Stop;
-using transport::Route;
-using transport::StopStats;
-using transport::RouteStats;
-
 //DEBUG
 #include <iostream>
 //using std::cerr;
 //using std::endl;
 
-Stop::Stop(string&& stop_name, geo::Coordinates coords)
-: name(std::move(stop_name))
-, location(coords)
-{}
-
-Route::Route(string&& name, vector<const Stop*>&& stops_in_order)
-: name(std::move(name))
-, stops(std::move(stops_in_order)) {}
-
-StopStats::StopStats(std::string_view stop_name, std::unordered_set<std::string_view> unique_routes)
-: id(stop_name)
-, sorted_routes(std::make_move_iterator(unique_routes.begin()), std::make_move_iterator(unique_routes.end())) {
-    std::sort(sorted_routes.begin(), sorted_routes.end());
-}
-
-void TransportCatalogue::AddStop(std::string&& stop_name, geo::Coordinates coords) {
+void TransportDb::AddStop(std::string stop_name, geo::Coord coords) {
     Stop* stop_to_add = new Stop(std::move(stop_name), coords);
     stop_index_[stop_to_add->name] = stop_to_add;
 }
-void TransportCatalogue::AddRoute(std::string&& route_name, const std::vector<std::string_view>& stops) {
-    Route* route_to_add = new Route(std::move(route_name), GetStopPtrs(stops));
-    route_index_[route_to_add->name] = route_to_add;
-    AddRouteToStops(route_to_add);
+void TransportDb::AddBus(std::string bus_name, const std::vector<std::string_view>& stops) {
+    Bus* bus_to_add = new Bus(std::move(bus_name), GetStopPtrs(stops));
+    bus_index_[bus_to_add->name] = bus_to_add;
+    AddBusToStops(bus_to_add);
 }
 
-//Теперь всё понятно =)!
-void TransportCatalogue::SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist) {
+void TransportDb::SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist) {
     road_distance_table_[{stop_index_.at(from_stop_name), stop_index_.at(to_stop_name)}] = dist;
 }
 
-std::optional<RouteStats> TransportCatalogue::GetRouteStats(string_view route_name) const {
-    if(route_index_.count(route_name) == 0) {
-        return std::nullopt;
+BusStat TransportDb::GetBusStat(string_view bus_name) const {
+    if(bus_index_.count(bus_name) == 0) {
+        return {}; //empty BusStat with bool exists = 0;
     }
-    auto route = route_index_.at(route_name);
-    //prev stop in route for distance calculation
-    const Stop* prev_stop = nullptr;
-    double route_geo_length = 0.0;
-    double route_road_dist = 0.0;
+    BusStat stat;
+    auto bus = bus_index_.at(bus_name);
     
-    for(const auto& stop : route->stops) {
-        route_geo_length += GetGeoDistance(prev_stop, stop);
-        route_road_dist += GetRoadDistance(prev_stop, stop);
+    stat.exists = true;
+    stat.total_stops = static_cast<int>(bus->stops.size());
+    stat.unique_stops = static_cast<int>(GetUniqueStops(bus).size());
+    
+    //prev stop in bus for distance calculation
+    StopPtr prev_stop = nullptr;
+    double bus_geo_length = 0.0;
+    
+    for(const auto& stop : bus->stops) {
+        bus_geo_length += GetGeoDistance(prev_stop, stop);
+        stat.road_dist += GetRoadDistance(prev_stop, stop);
         prev_stop = stop;
     }
-    double curvature = route_road_dist/route_geo_length;
-    
-    return {{route->stops.size(), GetUniqueStops(route).size(), route_road_dist, curvature}};
+    stat.curvature = stat.road_dist/bus_geo_length;
+
+    return stat;
 }
 
-std::optional<StopStats> TransportCatalogue::GetStopStats(std::string_view stop_name) const {
+StopStat TransportDb::GetStopStat(std::string_view stop_name) const {
     if(stop_index_.count(stop_name) == 0) {
-        return std::nullopt;                //no stop  - nullopt
-    } else if(stops_to_routes_.count(stop_name) == 0) {
-        return {StopStats{stop_name, {}}};  //no buses - empty StopStats
+        return {};
     }
-    return StopStats(stop_name, stops_to_routes_.at(stop_name));
+    StopStat stat;
+    stat.exists = true;
+    stat.BusesForStop = GetBusesForStop(stop_name);
+    
+    return stat;
 }
 
-vector<const Stop*> TransportCatalogue::GetStopPtrs(const vector<string_view>& route_stops) const {
-    vector<const Stop*> ptr_vector;
-    for(const auto& stop : route_stops) {
+vector<StopPtr> TransportDb::GetStopPtrs(const vector<string_view>& bus_stops) const {
+    vector<StopPtr> ptr_vector;
+    for(const auto& stop : bus_stops) {
         ptr_vector.push_back(stop_index_.at(stop));
     }
     return ptr_vector;
 }
 
-void TransportCatalogue::AddRouteToStops(const Route* route) {
-    for(const auto& stop : route->stops) {
-        stops_to_routes_[stop->name].insert(route->name);
+void TransportDb::AddBusToStops(BusPtr bus) {
+    for(const auto& stop : bus->stops) {
+        stops_to_buses_[stop->name].insert(bus->name);
     }
 }
 
 //All distances are whole positive numbers -> int or size_t
-int TransportCatalogue::GetRoadDistance(const Stop* from, const Stop* to) const {
+int TransportDb::GetRoadDistance(StopPtr from, StopPtr to) const {
     //invalid stop pointers
     if(!from || !to) {
         return 0;
@@ -106,7 +92,7 @@ int TransportCatalogue::GetRoadDistance(const Stop* from, const Stop* to) const 
     return it == road_distance_table_.end() ? -1 : it->second;
 }
 
-double TransportCatalogue::GetGeoDistance(const Stop* from, const Stop* to) const {
+double TransportDb::GetGeoDistance(StopPtr from, StopPtr to) const {
     //invalid stop pointers
     if(!from || !to) {
         return 0.0;
@@ -122,22 +108,33 @@ double TransportCatalogue::GetGeoDistance(const Stop* from, const Stop* to) cons
     return dist;
 }
 
-std::unordered_set<const transport::Stop*> TransportCatalogue::GetUniqueStops(const Route* route) const {
-    return {route->stops.begin(), route->stops.end()};
+std::unordered_set<StopPtr> TransportDb::GetUniqueStops(BusPtr bus) const {
+    return {bus->stops.begin(), bus->stops.end()};
 }
 
-size_t TransportCatalogue::SPHasher::operator()(const StopPair& ptr_pair) const {
+std::set<BusPtr, BusPtrSorter> TransportDb::GetBusesForStop(std::string_view stop_name) const {
+    if(stop_index_.count(stop_name) == 0 || stops_to_buses_.count(stop_name) == 0) {
+        return {};
+    }
+    std::set<BusPtr, BusPtrSorter> answer;
+    for(const auto& bus : stops_to_buses_.at(stop_name)) {
+        answer.insert(bus_index_.at(bus));
+    }
+    return answer;
+}
+
+size_t TransportDb::SPHasher::operator()(const StopPair& ptr_pair) const {
     size_t n = 37;
-    std::hash<const Stop*> ptr_hash;
+    std::hash<StopPtr> ptr_hash;
     return n*ptr_hash(ptr_pair.first) + ptr_hash(ptr_pair.second);
 }
 
-void TransportCatalogue::ClearData() {
+void TransportDb::ClearData() {
     for(auto& [_, stop] : stop_index_) {
         delete stop;
     }
     
-    for(auto& [_, route] : route_index_) {
-        delete route;
+    for(auto& [_, bus] : bus_index_) {
+        delete bus;
     }
 }

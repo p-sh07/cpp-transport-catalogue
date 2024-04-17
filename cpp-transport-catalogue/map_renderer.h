@@ -27,7 +27,7 @@ public:
                     double max_width, double max_height, double padding);
     
     // Проецирует широту и долготу в координаты внутри SVG-изображения
-    svg::Point operator()(geo::Coord coords) const;
+    svg::Point SphereProjector::Transpose(geo::Coord coords);
     
 private:
     double padding_;
@@ -62,88 +62,43 @@ struct RendererSettings {
     svg::StrokeLineJoin line_join_ = svg::StrokeLineJoin::ROUND;
 };
 
-//Unify applying renderer settings & colors to map objects -> interface class
-class MapObject : public svg::Drawable {
-public:
-    using ColorMap = std::map<std::string_view, svg::Color>;
-    
-    MapObject(const SphereProjector& sp);
-    virtual ~MapObject() = default;
-    
-    void SetParams(const RendererSettings& settings, const ColorMap& colors);
-    void SetProjector(const std::shared_ptr<SphereProjector> projector_);
-    
-    svg::Point GetImgPoint(geo::Coord pt);
-    
-protected:
-    const std::shared_ptr<SphereProjector> projector_ = nullptr;
-    
-private:
-    virtual void ApplySettings(const RendererSettings& settings, const ColorMap& colors) = 0;
-};
-
-
-//class StopGraphic : public MapObject {
-//public:
-//    StopGraphic(const SphereProjector& sp, std::string_view stop_name, geo::Coord coords);
-//    
-//    ~StopGraphic() override = default;
-//    
-//    void Draw(svg::ObjectContainer& container) const override;
-//    
-//private:
-//    void ApplySettings(const RendererSettings& settings, const ColorMap& colors) override;
-//};
-
-
-class BusGraphic : public MapObject {
-    BusGraphic(std::string_view bus_name, const std::vector<StopPtr>& stops, bool is_roundtrip);
-    
-    ~BusGraphic() override = default;
-    
-    void Draw(svg::ObjectContainer& container) const override;
-private:
-    std::string_view bus_name_;
-    const std::vector<StopPtr>& stops_;
-    bool is_roundtrip_ = false;
-    
-    svg::Polyline line_;
-    
-    //Get Stroke-width from settings
-    void ApplySettings(const RendererSettings& settings, const ColorMap& colors) override;
-};
-
-
 class MapRenderer {
 public:
     MapRenderer() = default;
     ~MapRenderer() = default;
     
-    MapRenderer(RendererSettings settings);
+    MapRenderer(RendererSettings* settings);
     
-    void ApplySettings(RendererSettings settings);
+    void LoadSettings(std::shared_ptr<RendererSettings> settings);
+    //use after adding all geo::Coords to the renderer
+    void MakeProjector();
     
-//    void AddStop(std::string_view stop_name, std::string_view bus_name, geo::Coord stop_coords);
+    void AddBus(BusPtr bus);
     
-    void AddBus(std::string_view bus_name, const std::vector<StopPtr>& stops, bool is_roundtrip);
-    
+    //void AddStop(std::string_view stop_name, std::string_view bus_name, geo::Coord stop_coords);
+        
     void RenderOut(std::ostream& out);
     
 private:
-    RendererSettings settings_;
-    mutable bool is_first_color_ = true;
-    mutable size_t color_index_ = 0;
+    std::shared_ptr<RendererSettings> settings_ = nullptr;
+    std::unique_ptr<SphereProjector> projector_ = nullptr;
     
-    svg::Color GetNextColor() const;
-    MapObject::ColorMap BuildColorMap() const;
-    void StoreBusName(std::string_view bus);
+    svg::Color GetNextColor(size_t& counter) const;
+
     void StoreCoordPtr(const geo::Coord* ptr);
     
-    //add only bus routes with stops in them
-    std::vector<std::string_view> all_bus_names_;
-    std::vector<const geo::Coord*> all_geo_points_;
-    std::vector<std::unique_ptr<MapObject>> objects_to_draw_;
+    std::unordered_set<const geo::Coord*> all_geo_points_;
+    std::set<BusPtr, BusPtrSorter> buses_to_draw_;
+    
+    void DrawBus(svg::Document& doc, BusPtr bus, svg::Color color);
+    //void DrawStop(StopPtr);
+    //void DrawLabel(std::string_view text, svg::Point img_pos);
+    
+    void DrawAllBuses(svg::Document& doc);
 };
+
+
+
 
 template <typename PointPtrInputIt>
 SphereProjector::SphereProjector(PointPtrInputIt points_begin, PointPtrInputIt points_end,

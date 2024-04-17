@@ -22,7 +22,7 @@ StopStat RequestHandler::GetStopStat(int request_id, const std::string_view& sto
 }
 
 void RequestHandler::ApplyRendererSettings(RendererSettings settings) {
-    renderer_.ApplySettings(std::move(settings));
+    renderer_.LoadSettings(std::move(settings));
 }
 
 // Отрисовать карту в поток

@@ -30,9 +30,17 @@ void MapRenderer::DrawBus(svg::Document& doc, BusPtr bus, svg::Color color) {
     }
     auto& stops = bus->stops;
     
-    //Draw stop points
+    //forward draw
     for(const auto& stop : stops) {
         line.AddPoint(projector_->Transform(stop->location));
+    }
+    
+    //backward draw, if not roundtrip
+    if(!(bus->is_roundtrip)) {
+        for(auto it = stops.rbegin(); it != stops.rend(); ++it) {
+            //TODO: Possibly store the projected points on the way up?
+            line.AddPoint(projector_->Transform((*it)->location));
+        }
     }
     
     line.SetFillColor(settings_->fill_color_)

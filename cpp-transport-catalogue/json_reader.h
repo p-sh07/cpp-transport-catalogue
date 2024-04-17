@@ -27,11 +27,10 @@ private:
         int id;
     };
     
-    const RequestHandler& req_handler_;
     TransportDb& database_;
+    const RequestHandler& req_handler_;
     std::queue<StatRequest> stat_requests_;
-    //TDOD: Need to store dict? or just std::move strings out when processing?
-    json::Dict parsed_json_;
+    json::Dict parsed_json_; //TODO: Need to store dict? or just std::move strings out when processing?
     json::Array stat_request_answers_;
 
     json::Dict MakeStatJson(const BusStat& stat) const;
@@ -54,5 +53,6 @@ void JsonReader::StoreRequestAnswer(const Stat& stat) {
     if(stat.exists) {
         answer = MakeStatJson(stat);
     }
-    stat_request_answers_.emplace_back(json::Node{answer});
+    json::Node node{answer};
+    stat_request_answers_.push_back(node);
 }

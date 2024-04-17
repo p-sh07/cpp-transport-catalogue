@@ -74,7 +74,7 @@ private:
 class BusData : public BaseCommand {
 public:
     BusData(CommandType type, std::string name, std::vector<std::string> stops,
-             bool is_roundtrip = false);
+             bool is_roundtrip);
     ~BusData() override = default;
     
     bool ApplyCommand(TransportDb& database) override;

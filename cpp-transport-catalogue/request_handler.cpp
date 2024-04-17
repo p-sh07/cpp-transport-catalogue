@@ -32,5 +32,10 @@ void RequestHandler::RenderMap(std::ostream& out) const {
     for(const auto& [bus_name, bus_ptr] : tdb_.GetAllBuses()) {
         renderer_.AddBus(bus_ptr);
     }
+    renderer_.MakeProjector();
     renderer_.RenderOut(out);
 }
+
+//void RequestHandler::UploadBusData(MapRenderer& renderer_) const {
+//    for(const auto [_, ])
+//}

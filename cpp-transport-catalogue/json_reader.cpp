@@ -60,12 +60,8 @@ BusData::BusData(CommandType type, std::string name, std::vector<std::string> st
 
 bool BusData::ApplyCommand(TransportDb& database) {
     std::vector<std::string_view> bus_stops {stops_.begin(), stops_.end()};
-    //add stops in reverse order, skipping last one
-    if(!is_roundtrip_) {
-        bus_stops.insert(bus_stops.end(), std::next(stops_.rbegin()), stops_.rend());
-    }
-    
-    database.AddBus(MoveOutName(), bus_stops);
+    //add stops in reverse order, skipping last one    
+    database.AddBus(MoveOutName(), bus_stops, is_roundtrip_);
     //this object will be deleted after use
     return true;
 }

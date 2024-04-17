@@ -22,7 +22,7 @@ using StopPtr = const Stop*;
 
 struct Bus {
     //move string during construction
-    explicit Bus(std::string name, std::vector<StopPtr> stops);
+    explicit Bus(std::string name, std::vector<StopPtr> stops, bool is_roundtrip);
     bool is_roundtrip = false;
     std::string name;
     std::vector<StopPtr> stops;

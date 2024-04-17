@@ -14,8 +14,8 @@ void TransportDb::AddStop(std::string stop_name, geo::Coord coords) {
     stop_index_[stop_to_add->name] = stop_to_add;
 }
 
-void TransportDb::AddBus(std::string bus_name, const std::vector<std::string_view>& stops) {
-    Bus* bus_to_add = new Bus(std::move(bus_name), GetStopPtrs(stops));
+void TransportDb::AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip) {
+    Bus* bus_to_add = new Bus(std::move(bus_name), GetStopPtrs(stops), is_roundtrip);
     bus_index_[bus_to_add->name] = bus_to_add;
     AddBusToStops(bus_to_add);
 }
@@ -43,6 +43,10 @@ BusStat TransportDb::GetBusStat(string_view bus_name) const {
         bus_geo_length += GetGeoDistance(prev_stop, stop);
         stat.road_dist += GetRoadDistance(prev_stop, stop);
         prev_stop = stop;
+    }
+    if(!(bus->is_roundtrip)) {
+        bus_geo_length *= 2;
+        stat.road_dist *= 2;
     }
     stat.curvature = stat.road_dist/bus_geo_length;
 

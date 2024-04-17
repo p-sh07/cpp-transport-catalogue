@@ -36,7 +36,7 @@ void MapRenderer::DrawBus(svg::Document& doc, BusPtr bus, svg::Color color) {
     }
     
     //backward draw, if not roundtrip
-    if(!bus->is_roundtrip) {
+    if(!(bus->is_roundtrip)) {
         for(auto it = stops.rbegin(); it != stops.rend(); ++it) {
             //TODO: Possibly store the projected points on the way up?
             line.AddPoint(projector_->Transform((*it)->location));
@@ -50,7 +50,7 @@ void MapRenderer::DrawBus(svg::Document& doc, BusPtr bus, svg::Color color) {
         .SetStrokeLineJoin(settings_->line_join_);
     
     doc.Add(line);
-}
+}                               //550,190.051 279.22,50 333.61,269.08 550,190.051
 
 void MapRenderer::DrawAllBuses(svg::Document& doc) {
     size_t counter = 0;

@@ -26,5 +26,7 @@ private:
     // RequestHandler использует агрегацию объектов "Транспортный Справочник" и "Визуализатор Карты"
     const TransportDb& tdb_;
     MapRenderer& renderer_;
+    
+    //void UploadBusData(MapRenderer& renderer_) const;
 };
 

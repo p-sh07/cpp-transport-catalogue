@@ -32,14 +32,14 @@ void MapRenderer::DrawBus(svg::Document& doc, BusPtr bus, svg::Color color) {
     
     //forward draw
     for(const auto& stop : stops) {
-        line.AddPoint(*projector_(stop->location));
+        line.AddPoint(projector_->Transform(stop->location));
     }
     
     //backward draw, if not roundtrip
     if(!bus->is_roundtrip) {
         for(auto it = stops.rbegin(); it != stops.rend(); ++it) {
             //TODO: Possibly store the projected points on the way up?
-            line.AddPoint(projector_(stop->location));
+            line.AddPoint(projector_->Transform((*it)->location));
         }
     }
     
@@ -56,7 +56,7 @@ void MapRenderer::DrawAllBuses(svg::Document& doc) {
     size_t counter = 0;
     for(const auto& bus : buses_to_draw_) {
         if(!bus->stops.empty()) {
-            DrawBus(bus, GetNextColor(counter));
+            DrawBus(doc, bus, GetNextColor(counter));
             //advance to next color if bus had stops
             ++counter;
         }
@@ -74,17 +74,17 @@ void MapRenderer::RenderOut(std::ostream& out) {
 }
 
 svg::Color MapRenderer::GetNextColor(size_t& counter) const {
-    return settings_.palette[counter % settings_.palette.size()];
+    return settings_->palette[counter % settings_->palette.size()];
 }
 
 void MapRenderer::StoreCoordPtr(const geo::Coord* ptr) {
-    all_geo_points_.push_back(ptr);
+    all_geo_points_.insert(ptr);
 }
 
 
 //=================== SphereProjector ===================//
 // Проецирует широту и долготу в координаты внутри SVG-изображения
-svg::Point SphereProjector::Transpose(geo::Coord coords) const {
+svg::Point SphereProjector::Transform(geo::Coord coords) const {
     return {
         (coords.lng - min_lon_) * zoom_coeff_ + padding_,
         (max_lat_ - coords.lat) * zoom_coeff_ + padding_

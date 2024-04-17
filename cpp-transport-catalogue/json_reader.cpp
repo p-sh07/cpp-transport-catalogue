@@ -94,7 +94,7 @@ void DatabaseWriter::ProcessDatabaseCommands() {
 //================ JsonReader ================//
 JsonReader::JsonReader(TransportDb& tdb, const RequestHandler& handler)
 : DatabaseWriter(tdb)
-, r_handler_(handler)
+, request_handler_(handler)
 {}
 
 void JsonReader::ParseInput(std::istream& in) {
@@ -162,6 +162,8 @@ void JsonReader::ParseInput(std::istream& in) {
         settings.underlayer_width = rs.at("underlayer_width"s).AsDouble();
         
         settings.palette = ParsePalette(rs.at("color_palette"s));
+        
+        request_handler_.UploadRendererSettings(std::make_shared<RendererSettings>(std::move(settings)));
     }
     //Store Database Stat Requests
     for(auto& json_request : parsed_json_["stat_requests"].AsArray()) {
@@ -253,12 +255,12 @@ void JsonReader::ProcessStatRequests() {
         }
         
         if(request->type == cmd::GetBusStat) {
-            BusStat stat = r_handler_.GetBusStat(request->id, request->name);
+            BusStat stat = request_handler_.GetBusStat(request->id, request->name);
             
             StoreRequestAnswer(stat);
         }
         else if(request->type == cmd::GetStopStat) {
-            StopStat stat = r_handler_.GetStopStat(request->id, request->name);
+            StopStat stat = request_handler_.GetStopStat(request->id, request->name);
             
             StoreRequestAnswer(stat);
         }

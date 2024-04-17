@@ -13,11 +13,6 @@
 #include <unordered_map>
 #include <vector>
 
-inline const double EPSILON = 1e-6;
-bool IsZero(double value) {
-    return std::abs(value) < EPSILON;
-}
-
 class SphereProjector {
 public:
     // points_begin и points_end задают начало и конец интервала элементов geo::Coord*
@@ -27,7 +22,7 @@ public:
                     double max_width, double max_height, double padding);
     
     // Проецирует широту и долготу в координаты внутри SVG-изображения
-    svg::Point SphereProjector::Transpose(geo::Coord coords);
+    svg::Point Transform(geo::Coord coords) const;
     
 private:
     double padding_;

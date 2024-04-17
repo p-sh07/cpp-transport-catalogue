@@ -130,7 +130,7 @@ public:
     void PrintRequestAnswers(std::ostream& out) const override;
     
 private:
-    const RequestHandler& r_handler_;
+    const RequestHandler& request_handler_;
 
     json::Dict MakeStatJson(const BusStat& stat) const;
     json::Dict MakeStatJson(const StopStat& stat) const;
@@ -159,30 +159,3 @@ void JsonReader::StoreRequestAnswer(const Stat& stat) {
     json::Node node(answer);
     request_replies_.push_back(node);
 }
-
-/* Map renderer settings
-{
-  "width": 1200.0,
-  "height": 1200.0,
-
-  "padding": 50.0,
-
-  "line_width": 14.0,
-  "stop_radius": 5.0,
-
-  "bus_label_font_size": 20,
-  "bus_label_offset": [7.0, 15.0],
-
-  "stop_label_font_size": 20,
-  "stop_label_offset": [7.0, -3.0],
-
-  "underlayer_color": [255, 255, 255, 0.85],
-  "underlayer_width": 3.0,
-
-  "color_palette": [
-    "green",
-    [255, 160, 0],
-    "red"
-  ]
-}
-*/

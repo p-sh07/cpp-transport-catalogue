@@ -5,6 +5,13 @@
 #include <set>
 #include <vector>
 
+//For calculations:
+inline const double EPSILON = 1e-6;
+inline bool IsZero(double value) {
+    return std::abs(value) < EPSILON;
+}
+
+//======================= Stop & Bus =======================//
 struct Stop {
     explicit Stop(std::string stop_name, geo::Coord coords);
     std::string name;

@@ -17,7 +17,7 @@ public:
     // Возвращает маршруты, проходящие через Stop
     StopStat GetStopStat(int request_id, const std::string_view& stop_name) const;
 
-    void ApplyRendererSettings(RendererSettings settings);
+    void UploadRendererSettings(std::shared_ptr<RendererSettings> settings) const;
     
     // Отрисовать карту в svg документ
     void RenderMap(std::ostream& out) const;

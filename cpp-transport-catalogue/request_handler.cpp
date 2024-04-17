@@ -21,8 +21,8 @@ StopStat RequestHandler::GetStopStat(int request_id, const std::string_view& sto
     return stat;
 }
 
-void RequestHandler::ApplyRendererSettings(RendererSettings settings) {
-    renderer_.LoadSettings(std::move(settings));
+void RequestHandler::UploadRendererSettings(std::shared_ptr<RendererSettings> settings) const {
+    renderer_.LoadSettings(settings);
 }
 
 // Отрисовать карту в поток
@@ -30,7 +30,7 @@ void RequestHandler::RenderMap(std::ostream& out) const {
     //TODO: Add stops? OR add stops via buses in one go?
     
     for(const auto& [bus_name, bus_ptr] : tdb_.GetAllBuses()) {
-        renderer_.AddBus(bus_name, bus_ptr->stops, bus_ptr->is_roundtrip);
+        renderer_.AddBus(bus_ptr);
     }
     renderer_.RenderOut(out);
 }

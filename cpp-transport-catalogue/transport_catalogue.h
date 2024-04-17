@@ -28,24 +28,29 @@ public:
     BusStat GetBusStat(std::string_view bus_name) const;
     StopStat GetStopStat(std::string_view stop_name) const;
     
+    using BusIndex = std::unordered_map<std::string_view, Bus*>;
+    using StopIndex = std::unordered_map<std::string_view, Stop*>;
+    
+    const BusIndex& GetAllBuses() const;
+    const StopIndex& GetAllStops() const;
+    
 private:
     using StopPair = std::pair<StopPtr, StopPtr>;
     
-    std::vector<StopPtr> GetStopPtrs(const std::vector<std::string_view>& bus_stops) const;
-    
-    int GetRoadDistance(StopPtr from, StopPtr to) const;
+    void AddBusToStops(BusPtr bus);
     
     double GetGeoDistance(StopPtr from, StopPtr to) const;
-    
-    void AddBusToStops(BusPtr bus);
+    int GetRoadDistance(StopPtr from, StopPtr to) const;
     
     std::unordered_set<StopPtr> GetUniqueStops(BusPtr) const;
     std::set<BusPtr, BusPtrSorter> GetBusesForStop(std::string_view stop_name) const;
-
+    std::vector<StopPtr> GetStopPtrs(const std::vector<std::string_view>& bus_stops) const;
+    
     void ClearData();
     
-    std::unordered_map<std::string_view, Stop*> stop_index_;
-    std::unordered_map<std::string_view, Bus*> bus_index_;
+    StopIndex stop_index_;
+    BusIndex bus_index_;
+    
     std::unordered_map<std::string_view, std::unordered_set<std::string_view>> stops_to_buses_;
     
     struct SPHasher {

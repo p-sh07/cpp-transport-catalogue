@@ -98,12 +98,13 @@ JsonReader::JsonReader(TransportDb& tdb, const RequestHandler& handler)
 {}
 
 void JsonReader::ParseInput(std::istream& in) {
-    //gives a dict with 2 keys
+    //gives a dict with 3 keys
     parsed_json_ = json::Load(in).GetRoot().AsMap();
-    //process database requests; returns Array of dicts
+    
+    //Build Transport Database
     for(auto& entry : parsed_json_["base_requests"s].AsArray()) {
         auto& dict = entry.AsMap();
-        //db_req is a map
+        
         if(dict.at("type"s).AsString() == "Stop"s) {
             //build road distances map:
             std::unordered_map<std::string, int> distances;
@@ -120,6 +121,7 @@ void JsonReader::ParseInput(std::istream& in) {
             
             base_requests_.push_back(std::make_unique<cmd::StopData>(std::move(stop_info)));
         }
+        //Process Bus Route
         else if(dict.at("type"s).AsString() == "Bus"s) {
             std::vector<std::string> stops;
             for(const auto& node : dict.at("stops"s).AsArray()) {
@@ -136,7 +138,32 @@ void JsonReader::ParseInput(std::istream& in) {
     //Write stop & route data to database
     DatabaseWriter::ProcessDatabaseCommands();
     
-    //process stat requests:
+    //Parse and Apply Map Renderer Settings
+    {
+        auto& rs = parsed_json_["render_settings"].AsMap();
+        RendererSettings settings;
+        
+        settings.img_size.width = rs.at("width"s).AsDouble();
+        settings.img_size.height = rs.at("height"s).AsDouble();
+        
+        settings.padding = rs.at("padding"s).AsDouble();
+        
+        settings.line_width = rs.at("line_width"s).AsDouble();
+        settings.stop_radius = rs.at("stop_radius"s).AsDouble();
+        
+        settings.bus_label_font_size = rs.at("bus_label_font_size"s).AsInt();
+        settings.bus_label_offset = ParsePoint(rs.at("bus_label_offset"s));
+        //TODO: Offset is a size, not a point, possibly change
+        
+        settings.stop_label_font_size = rs.at("stop_label_font_size"s).AsDouble();
+        settings.stop_label_offset = ParsePoint(rs.at("stop_label_offset"s));
+        
+        settings.underlayer_color = ParseColor(rs.at("underlayer_color"s));
+        settings.underlayer_width = rs.at("underlayer_width"s).AsDouble();
+        
+        settings.palette = ParsePalette(rs.at("color_palette"s));
+    }
+    //Store Database Stat Requests
     for(auto& json_request : parsed_json_["stat_requests"].AsArray()) {
         if(json_request.AsMap().empty()) {
             throw std::runtime_error("");
@@ -166,6 +193,52 @@ json::Dict JsonReader::MakeStatJson(const StopStat& stat) const {
         {"request_id"s, {stat.request_id}}};
 }
 
+svg::Point JsonReader::ParsePoint(json::Node point_node) const {
+    svg::Point pt;
+    pt.x = point_node.AsArray()[0].AsDouble();
+    pt.y = point_node.AsArray()[1].AsDouble();
+    return pt;
+}
+
+svg::Color JsonReader::ParseColor(json::Node color_node) const {
+    svg::Color result;
+    
+    if(color_node.IsString()) {
+        result.emplace<std::string>(color_node.AsString());
+    }
+    else if(color_node.IsArray()) {
+        auto& color_array = color_node.AsArray();
+        if(color_array.size() == 3) {
+            svg::Rgb rgb;
+            
+            rgb.red = static_cast<uint8_t>(color_array[0].AsInt());
+            rgb.green = static_cast<uint8_t>(color_array[1].AsInt());
+            rgb.blue = static_cast<uint8_t>(color_array[2].AsInt());
+            
+            result.emplace<svg::Rgb>(rgb);
+        }
+        else if(color_array.size() == 4) {
+            svg::Rgba rgba;
+            
+            rgba.red = static_cast<uint8_t>(color_array[0].AsInt());
+            rgba.green = static_cast<uint8_t>(color_array[1].AsInt());
+            rgba.blue = static_cast<uint8_t>(color_array[2].AsInt());
+            rgba.opacity = color_array[3].AsDouble();
+            
+            result.emplace<svg::Rgba>(rgba);
+        }
+    }
+    return result;
+}
+
+std::vector<svg::Color> JsonReader::ParsePalette(json::Node pallete_node) const {
+    std::vector<svg::Color> result;
+    
+    for(const auto& color_node : pallete_node.AsArray()) {
+        result.emplace_back(ParseColor(color_node));
+    }
+    return result;
+}
 
 void JsonReader::ProcessStatRequests() {
     while(!stat_requests_.empty()) {

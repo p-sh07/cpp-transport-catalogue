@@ -8,9 +8,9 @@
 using namespace std;
 
 int main() {
-    MapRenderer map_renderer; //заглушка
     
     TransportDb database;
+    MapRenderer map_renderer;
     RequestHandler request_handler(database, map_renderer);
     JsonReader jreader(database, request_handler);
     
@@ -18,7 +18,7 @@ int main() {
     //ifstream in("../../../../../input.json");
     
     jreader.ParseInput(in);
-    jreader.ProcessStatRequests();
-    jreader.PrintRequestAnswers(std::cout);
-    
+    //jreader.ProcessStatRequests();
+    //jreader.PrintRequestAnswers(std::cout);
+    request_handler.RenderMap(std::cout);
 }

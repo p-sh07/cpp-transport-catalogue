@@ -1,6 +1,6 @@
 #include "request_handler.h"
 
-RequestHandler::RequestHandler(const TransportDb& tdb, const MapRenderer& renderer)
+RequestHandler::RequestHandler(const TransportDb& tdb, MapRenderer& renderer)
 : tdb_(tdb)
 , renderer_(renderer) 
 {}
@@ -19,4 +19,18 @@ StopStat RequestHandler::GetStopStat(int request_id, const std::string_view& sto
     stat.request_id = request_id;
     
     return stat;
+}
+
+void RequestHandler::ApplyRendererSettings(RendererSettings settings) {
+    renderer_.ApplySettings(std::move(settings));
+}
+
+// Отрисовать карту в поток
+void RequestHandler::RenderMap(std::ostream& out) const {
+    //TODO: Add stops? OR add stops via buses in one go?
+    
+    for(const auto& [bus_name, bus_ptr] : tdb_.GetAllBuses()) {
+        renderer_.AddBus(bus_name, bus_ptr->stops, bus_ptr->is_roundtrip);
+    }
+    renderer_.RenderOut(out);
 }

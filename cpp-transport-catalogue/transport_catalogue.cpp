@@ -13,6 +13,7 @@ void TransportDb::AddStop(std::string stop_name, geo::Coord coords) {
     Stop* stop_to_add = new Stop(std::move(stop_name), coords);
     stop_index_[stop_to_add->name] = stop_to_add;
 }
+
 void TransportDb::AddBus(std::string bus_name, const std::vector<std::string_view>& stops) {
     Bus* bus_to_add = new Bus(std::move(bus_name), GetStopPtrs(stops));
     bus_index_[bus_to_add->name] = bus_to_add;
@@ -59,18 +60,34 @@ StopStat TransportDb::GetStopStat(std::string_view stop_name) const {
     return stat;
 }
 
-vector<StopPtr> TransportDb::GetStopPtrs(const vector<string_view>& bus_stops) const {
-    vector<StopPtr> ptr_vector;
-    for(const auto& stop : bus_stops) {
-        ptr_vector.push_back(stop_index_.at(stop));
-    }
-    return ptr_vector;
+const TransportDb::BusIndex& TransportDb::GetAllBuses() const {
+    return bus_index_;
+}
+
+const TransportDb::StopIndex& TransportDb::GetAllStops() const {
+    return stop_index_;
 }
 
 void TransportDb::AddBusToStops(BusPtr bus) {
     for(const auto& stop : bus->stops) {
         stops_to_buses_[stop->name].insert(bus->name);
     }
+}
+
+double TransportDb::GetGeoDistance(StopPtr from, StopPtr to) const {
+    //invalid stop pointers
+    if(!from || !to) {
+        return 0.0;
+    }
+    //use pair for convenience
+    auto stop_pair = std::make_pair(from, to);
+    if(geo_distance_table_.count(stop_pair) > 0) {
+        return geo_distance_table_.at(stop_pair);
+    }
+    //compute if not found
+    double dist = geo::ComputeDistance(from->location, to->location);
+    geo_distance_table_[stop_pair] = dist;
+    return dist;
 }
 
 //All distances are whole positive numbers -> int or size_t
@@ -92,22 +109,6 @@ int TransportDb::GetRoadDistance(StopPtr from, StopPtr to) const {
     return it == road_distance_table_.end() ? -1 : it->second;
 }
 
-double TransportDb::GetGeoDistance(StopPtr from, StopPtr to) const {
-    //invalid stop pointers
-    if(!from || !to) {
-        return 0.0;
-    }
-    //use pair for convenience
-    auto stop_pair = std::make_pair(from, to);
-    if(geo_distance_table_.count(stop_pair) > 0) {
-        return geo_distance_table_.at(stop_pair);
-    }
-    //compute if not found
-    double dist = geo::ComputeDistance(from->location, to->location);
-    geo_distance_table_[stop_pair] = dist;
-    return dist;
-}
-
 std::unordered_set<StopPtr> TransportDb::GetUniqueStops(BusPtr bus) const {
     return {bus->stops.begin(), bus->stops.end()};
 }
@@ -123,10 +124,12 @@ std::set<BusPtr, BusPtrSorter> TransportDb::GetBusesForStop(std::string_view sto
     return answer;
 }
 
-size_t TransportDb::SPHasher::operator()(const StopPair& ptr_pair) const {
-    size_t n = 37;
-    std::hash<StopPtr> ptr_hash;
-    return n*ptr_hash(ptr_pair.first) + ptr_hash(ptr_pair.second);
+vector<StopPtr> TransportDb::GetStopPtrs(const vector<string_view>& bus_stops) const {
+    vector<StopPtr> ptr_vector;
+    for(const auto& stop : bus_stops) {
+        ptr_vector.push_back(stop_index_.at(stop));
+    }
+    return ptr_vector;
 }
 
 void TransportDb::ClearData() {
@@ -137,4 +140,10 @@ void TransportDb::ClearData() {
     for(auto& [_, bus] : bus_index_) {
         delete bus;
     }
+}
+
+size_t TransportDb::SPHasher::operator()(const StopPair& ptr_pair) const {
+    size_t n = 37;
+    std::hash<StopPtr> ptr_hash;
+    return n*ptr_hash(ptr_pair.first) + ptr_hash(ptr_pair.second);
 }

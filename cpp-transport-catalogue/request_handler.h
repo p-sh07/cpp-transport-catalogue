@@ -9,7 +9,7 @@
 
 class RequestHandler {
 public:
-    RequestHandler(const TransportDb& tdb, const MapRenderer& renderer);
+    RequestHandler(const TransportDb& tdb, MapRenderer& renderer);
 
     // Возвращает информацию о маршруте (запрос Bus)
     BusStat GetBusStat(int request_id, const std::string_view& bus_name) const;
@@ -17,12 +17,14 @@ public:
     // Возвращает маршруты, проходящие через Stop
     StopStat GetStopStat(int request_id, const std::string_view& stop_name) const;
 
-    // Этот метод будет нужен в следующей части итогового проекта
-    svg::Document RenderMap() const;
-
+    void ApplyRendererSettings(RendererSettings settings);
+    
+    // Отрисовать карту в svg документ
+    void RenderMap(std::ostream& out) const;
+    
 private:
     // RequestHandler использует агрегацию объектов "Транспортный Справочник" и "Визуализатор Карты"
     const TransportDb& tdb_;
-    const MapRenderer& renderer_;
+    MapRenderer& renderer_;
 };
 

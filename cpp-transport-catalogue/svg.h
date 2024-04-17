@@ -59,6 +59,16 @@ struct Point {
     double y = 0;
 };
 
+struct Size {
+    Size() = default;
+    Size(double width, double height)
+        : width(width)
+        , height(height) {
+    }
+    double width = 0;
+    double height = 0;
+};
+
 /*
  * Вспомогательная структура, хранящая контекст для вывода SVG-документа с отступами.
  * Хранит ссылку на поток вывода, текущее значение и шаг отступа при выводе элемента
@@ -176,8 +186,6 @@ void PathProps<Owner>::RenderAttrs(std::ostream& out) const {
       RenderOptionalAttr(out, "fill"sv, fill_color_);
      ...
      */
-    
-    
    if(fill_color_.has_value()) {
        out << "fill=\""s << fill_color_.value() << "\" ";
    }

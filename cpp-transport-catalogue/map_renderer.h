@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+//=================== SphereProjector ===================//
 class SphereProjector {
 public:
     // points_begin и points_end задают начало и конец интервала элементов geo::Coord*
@@ -22,7 +23,7 @@ public:
                     double max_width, double max_height, double padding);
     
     // Проецирует широту и долготу в координаты внутри SVG-изображения
-    svg::Point Transform(geo::Coord coords) const;
+    svg::Point ToImgPt(geo::Coord coords) const;
     
 private:
     double padding_;
@@ -31,9 +32,17 @@ private:
     double zoom_coeff_ = 0;
 };
 
+/*
+ x и y — координаты соответствующей остановки;
+ смещение dx и dy равно настройке bus_label_offset;
+ размер шрифта font-size равен настройке bus_label_font_size;
+ название шрифта font-family — "Verdana";
+ толщина шрифта font-weight — "bold".
+ содержимое — название автобуса.
+ */
 struct RendererSettings {
     //read from json:
-    svg::Size img_size;
+    svg::Point img_size;
     double padding = 0.0;
     
     double line_width = 1.0;
@@ -51,6 +60,14 @@ struct RendererSettings {
     std::vector<svg::Color> palette;
     
     // defaults + set by Renderer:
+    //Text:
+    std::string font_family = "Verdana";
+    std::string font_weight = "bold";
+    svg::Color stop_label_text_color = "black";
+    //Bus circle:
+    svg::Color stop_circle_line_color = "white";
+    svg::Color stop_circle_fill_color = "white";
+    //PathProps common:
     svg::Color stroke_color_ = "black";
     svg::Color fill_color_ = svg::NoneColor;
     svg::StrokeLineCap line_cap_ = svg::StrokeLineCap::ROUND;
@@ -62,39 +79,49 @@ public:
     MapRenderer() = default;
     ~MapRenderer() = default;
     
-    MapRenderer(RendererSettings* settings);
+    //MapRenderer(RendererSettings* settings);
     
     void LoadSettings(std::shared_ptr<RendererSettings> settings);
     //use after adding all geo::Coords to the renderer
-    void MakeProjector();
+    void InitProjector();
     
     void AddBus(BusPtr bus);
+    void AddStop(StopPtr stop);
     
-    //void AddStop(std::string_view stop_name, std::string_view bus_name, geo::Coord stop_coords);
+    void AddBusSet(BusSet bus);
+    void AddStopSet(StopSet stop);
+    
+//    void AddTextLabel(std::string_view text, svg::Point pos, svg::Point offset);
         
     void RenderOut(std::ostream& out);
     
 private:
-    std::shared_ptr<RendererSettings> settings_ = nullptr;
-    std::unique_ptr<SphereProjector> projector_ = nullptr;
+    std::shared_ptr<RendererSettings> rsets_ = nullptr;
+    std::unique_ptr<SphereProjector> sproj_ = nullptr;
     
     svg::Color GetNextColor(size_t& counter) const;
 
     void StoreCoordPtr(const geo::Coord* ptr);
     
     std::unordered_set<const geo::Coord*> all_geo_points_;
-    std::set<BusPtr, BusPtrSorter> buses_to_draw_;
+    BusSet buses_to_draw_;
+    StopSet stops_to_draw_;
     
-    void DrawBus(svg::Document& doc, BusPtr bus, svg::Color color);
-    //void DrawStop(StopPtr);
-    //void DrawLabel(std::string_view text, svg::Point img_pos);
+    svg::Document bus_lines_;
+    svg::Document bus_labels_;
+    svg::Document stop_circles_;
+    svg::Document stop_labels_;
     
-    void DrawAllBuses(svg::Document& doc);
+    void DrawBus(BusPtr bus, svg::Color color);
+    void DrawStop(StopPtr);
+    void DrawBusLabel(svg::Document& doc, std::string_view text, svg::Point pos, svg::Color text_clr);
+    void DrawStopLabel(svg::Document& doc, std::string_view text, svg::Point pos);
+    
+    void DrawAllObjects(svg::Document& doc);
 };
 
 
-
-
+//=================== SphereProjector ===================//
 template <typename PointPtrInputIt>
 SphereProjector::SphereProjector(PointPtrInputIt points_begin, PointPtrInputIt points_end,
                                  double max_width, double max_height, double padding)

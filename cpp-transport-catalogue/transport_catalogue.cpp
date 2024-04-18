@@ -14,8 +14,12 @@ void TransportDb::AddStop(std::string stop_name, geo::Coord coords) {
     stop_index_[stop_to_add->name] = stop_to_add;
 }
 
-void TransportDb::AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip) {
-    Bus* bus_to_add = new Bus(std::move(bus_name), GetStopPtrs(stops), is_roundtrip);
+void TransportDb::AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip, std::string_view final_stop) {
+    
+    //TODO: Add final_stop presence in index check?
+    StopPtr final_stop_ptr = final_stop.empty() ? nullptr : stop_index_.at(final_stop);
+
+    Bus* bus_to_add = new Bus(std::move(bus_name), GetStopPtrs(stops), is_roundtrip, final_stop_ptr);
     bus_index_[bus_to_add->name] = bus_to_add;
     AddBusToStops(bus_to_add);
 }
@@ -60,12 +64,32 @@ StopStat TransportDb::GetStopStat(std::string_view stop_name) const {
     return stat;
 }
 
-const TransportDb::BusIndex& TransportDb::GetAllBuses() const {
-    return bus_index_;
+BusSet TransportDb::GetAllBusesWithStops() const {
+    BusSet buses;
+    if(bus_index_.empty()) {
+        return {};
+    }
+    //NB: BusPtr is a const ptr
+    for(const auto& [_, bus_ptr] : bus_index_) {
+        if(!bus_ptr->stops.empty()) {
+            buses.insert(bus_ptr);
+        }
+    }
+    return buses;
 }
 
-const TransportDb::StopIndex& TransportDb::GetAllStops() const {
-    return stop_index_;
+StopSet TransportDb::GetAllStopsWithBuses() const {
+    StopSet stops;
+    if(stop_index_.empty()) {
+        return {};
+    }
+    //NB: BusPtr is a const ptr
+    for(const auto& [_, stop_ptr] : stop_index_) {
+        if(stops_to_buses_.count(stop_ptr->name) > 0 && !stops_to_buses_.at(stop_ptr->name).empty()) {
+            stops.insert(stop_ptr);
+        }
+    }
+    return stops;
 }
 
 void TransportDb::AddBusToStops(BusPtr bus) {
@@ -113,11 +137,11 @@ std::unordered_set<StopPtr> TransportDb::GetUniqueStops(BusPtr bus) const {
     return {bus->stops.begin(), bus->stops.end()};
 }
 
-std::set<BusPtr, BusPtrSorter> TransportDb::GetBusesForStop(std::string_view stop_name) const {
+BusSet TransportDb::GetBusesForStop(std::string_view stop_name) const {
     if(stop_index_.count(stop_name) == 0 || stops_to_buses_.count(stop_name) == 0) {
         return {};
     }
-    std::set<BusPtr, BusPtrSorter> answer;
+    BusSet answer;
     for(const auto& bus : stops_to_buses_.at(stop_name)) {
         answer.insert(bus_index_.at(bus));
     }

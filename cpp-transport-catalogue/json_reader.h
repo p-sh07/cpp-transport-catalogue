@@ -15,7 +15,7 @@ class JsonReader {
 public:
     JsonReader(TransportDb& tdb, const RequestHandler& handler);
     
-    void ParseInput(std::istream& in);
+    void ParseInput(std::istream& in, bool has_settings = false, bool has_stat_requests = false);
     void ProcessDatabaseCommands();
     void ProcessStatRequests();
     void PrintRequestAnswers(std::ostream& out) const;
@@ -29,7 +29,7 @@ private:
     
     TransportDb& database_;
     const RequestHandler& req_handler_;
-    std::queue<StatRequest> stat_requests_;
+    std::queue<StatRequest> request_queue_;
     json::Dict parsed_json_; //TODO: Need to store dict? or just std::move strings out when processing?
     json::Array stat_request_answers_;
 
@@ -38,6 +38,13 @@ private:
     
     template <typename Stat>
     void StoreRequestAnswer(const Stat& stat);
+    void StoreSvgMap(std::string map, int request_id);
+    
+    void ParseAndAddStops(const json::Array& database_commands, TransportDb& db) const;
+    void ParseAndAddBuses(const json::Array& database_commands, TransportDb& db) const;
+    RendererSettings ParseRendererSettings(const json::Dict& renderer_settings) const;
+    void ParseStatRequests(const json::Array& stat_reqs, std::queue<StatRequest>& request_queue) const;
+    
     
     svg::Point ParsePoint(json::Node point_node) const;
     svg::Color ParseColor(json::Node color_node) const;

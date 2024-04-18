@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -57,16 +58,6 @@ struct Point {
     }
     double x = 0;
     double y = 0;
-};
-
-struct Size {
-    Size() = default;
-    Size(double width, double height)
-        : width(width)
-        , height(height) {
-    }
-    double width = 0;
-    double height = 0;
 };
 
 /*
@@ -248,7 +239,7 @@ public:
     Text& SetOffset(Point offset);
 
     // Задаёт размеры шрифта (атрибут font-size)
-    Text& SetFontSize(uint32_t size);
+    Text& SetFontPoint(uint32_t size);
 
     // Задаёт название шрифта (атрибут font-family)
     Text& SetFontFamily(std::string font_family);
@@ -294,11 +285,19 @@ class Document : public ObjectContainer {
 public:
     ~Document() = default;
     
+    Document& operator=(Document&& other) {
+        objects_.insert(objects_.end(), std::make_move_iterator(other.objects_.begin()), std::make_move_iterator(other.objects_.end()));
+        
+        other.objects_.erase(other.objects_.begin(), other.objects_.end());
+        
+        return *this;
+    }
+    
     // Добавляет в svg-документ объект-наследник svg::Object
     void AddPtr(std::unique_ptr<Object>&& obj) override;
     
     const std::unique_ptr<Object>& GetObject(size_t obj_id) const { return objects_[obj_id]; }
-
+    
     // Выводит в ostream svg-представление документа
     void Render(std::ostream& out) const;
 

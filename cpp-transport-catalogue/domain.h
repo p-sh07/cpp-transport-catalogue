@@ -11,6 +11,7 @@ inline bool IsZero(double value) {
     return std::abs(value) < EPSILON;
 }
 
+
 //======================= Stop & Bus =======================//
 struct Stop {
     explicit Stop(std::string stop_name, geo::Coord coords);
@@ -22,10 +23,11 @@ using StopPtr = const Stop*;
 
 struct Bus {
     //move string during construction
-    explicit Bus(std::string name, std::vector<StopPtr> stops, bool is_roundtrip);
+    explicit Bus(std::string name, std::vector<StopPtr> stops, bool is_roundtrip, StopPtr final_stop = nullptr);
     std::string name;
     std::vector<StopPtr> stops;
     bool is_roundtrip = false;
+    StopPtr final_stop = nullptr;
 };
 
 using BusPtr = const Bus*;
@@ -34,10 +36,17 @@ struct BusPtrSorter {
     bool operator()(const BusPtr& lhs, const BusPtr& rhs) const;
 };
 
+struct StopPtrSorter {
+    bool operator()(const StopPtr& lhs, const StopPtr& rhs) const;
+};
+
+using BusSet = std::set<BusPtr, BusPtrSorter>;
+using StopSet = std::set<StopPtr, StopPtrSorter>;
+
 struct StopStat {
     int request_id = 0;
     bool exists = false;
-    std::set<BusPtr, BusPtrSorter> BusesForStop;
+    BusSet BusesForStop;
 };
 
 struct BusStat {

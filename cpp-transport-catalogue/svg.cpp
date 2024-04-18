@@ -131,7 +131,7 @@ Text& Text::SetOffset(Point offset) {
 }
 
 // Задаёт размеры шрифта (атрибут font-size)
-Text& Text::SetFontSize(uint32_t size) {
+Text& Text::SetFontPoint(uint32_t size) {
     font_size_ = size;
     return *this;
 }

@@ -2,7 +2,7 @@
 
 using namespace std::literals;
 
-void MapRenderer::LoadSettings(std::shared_ptr<RendererSettings> settings) {
+void MapRenderer::LoadSettings(const std::shared_ptr<RendererSettings> settings) {
     rsets_ = settings;
 }
 
@@ -19,7 +19,6 @@ void MapRenderer::AddBus(BusPtr bus) {
     }
 }
 
-//not used for now:
 void MapRenderer::AddStop(StopPtr stop) {
     stops_to_draw_.insert(stop);
 }
@@ -41,7 +40,7 @@ void MapRenderer::AddStopSet(StopSet stops) {
 //void MapRenderer::AddTextLabel(std::string_view text, svg::Point pos, svg::Point offset) {}
 
 void MapRenderer::DrawBusLabel(svg::Document& doc, std::string_view text, svg::Point pos, svg::Color text_clr) {
-    std::string bus_name = std::string(text);
+    const std::string bus_name = std::string(text);
     //Подложка
     doc.Add(svg::Text()
             .SetData(bus_name)
@@ -71,7 +70,7 @@ void MapRenderer::DrawBusLabel(svg::Document& doc, std::string_view text, svg::P
 }
 
 void MapRenderer::DrawStopLabel(svg::Document& doc, std::string_view text, svg::Point pos) {
-    std::string stop_name = std::string(text);
+    const std::string stop_name = std::string(text);
     //Подложка
     doc.Add(svg::Text()
             .SetData(stop_name)
@@ -112,7 +111,7 @@ void MapRenderer::DrawBus(BusPtr bus, svg::Color color) {
         return;
     }
     
-    auto& stops = bus->stops;
+    const auto& stops = bus->stops;
     //1.Make bus route line
     for(const auto& stop : stops) {
         line.AddPoint(sproj_->ToImgPt(stop->location));
@@ -127,7 +126,7 @@ void MapRenderer::DrawBus(BusPtr bus, svg::Color color) {
     bus_lines_.Add(line);
 
     //2.Draw bus route labels
-    auto& first_stop = bus->stops[0];
+    const auto& first_stop = bus->stops[0];
     DrawBusLabel(bus_labels_, bus->name, sproj_->ToImgPt(first_stop->location), color);
     //if not a roundtrip bus, and first stop doesn't match last stop
     if(bus->final_stop && !bus->is_roundtrip && bus->final_stop != first_stop) {
@@ -136,7 +135,7 @@ void MapRenderer::DrawBus(BusPtr bus, svg::Color color) {
 }
 
 void MapRenderer::DrawStop(StopPtr stop) {
-    auto stop_pt = sproj_->ToImgPt(stop->location);
+    const auto stop_pt = sproj_->ToImgPt(stop->location);
     
     stop_circles_.Add(svg::Circle()
             .SetCenter(stop_pt)

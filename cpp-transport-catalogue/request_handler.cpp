@@ -21,7 +21,7 @@ StopStat RequestHandler::GetStopStat(int request_id, const std::string_view& sto
     return stat;
 }
 
-void RequestHandler::UploadRendererSettings(std::shared_ptr<RendererSettings> settings) const {
+void RequestHandler::UploadRendererSettings(const std::shared_ptr<RendererSettings> settings) const {
     renderer_.LoadSettings(settings);
 }
 

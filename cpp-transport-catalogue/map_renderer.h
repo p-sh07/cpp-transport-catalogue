@@ -32,14 +32,6 @@ private:
     double zoom_coeff_ = 0;
 };
 
-/*
- x и y — координаты соответствующей остановки;
- смещение dx и dy равно настройке bus_label_offset;
- размер шрифта font-size равен настройке bus_label_font_size;
- название шрифта font-family — "Verdana";
- толщина шрифта font-weight — "bold".
- содержимое — название автобуса.
- */
 struct RendererSettings {
     //read from json:
     svg::Point img_size;
@@ -81,7 +73,7 @@ public:
     
     //MapRenderer(RendererSettings* settings);
     
-    void LoadSettings(std::shared_ptr<RendererSettings> settings);
+    void LoadSettings(const std::shared_ptr<RendererSettings> settings);
     //use after adding all geo::Coords to the renderer
     void InitProjector();
     
@@ -91,7 +83,7 @@ public:
     void AddBusSet(BusSet bus);
     void AddStopSet(StopSet stop);
     
-//    void AddTextLabel(std::string_view text, svg::Point pos, svg::Point offset);
+//  void AddTextLabel(std::string_view text, svg::Point pos, svg::Point offset);
         
     void RenderOut(std::ostream& out);
     
@@ -104,6 +96,7 @@ private:
     void StoreCoordPtr(const geo::Coord* ptr);
     
     std::unordered_set<const geo::Coord*> all_geo_points_;
+    
     BusSet buses_to_draw_;
     StopSet stops_to_draw_;
     

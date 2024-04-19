@@ -21,8 +21,8 @@ public:
     ~TransportDb() {
         ClearData();
     }
-    void AddStop(std::string stop_name, geo::Coord coords);
-    void AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip, std::string_view final_stop = {});
+    StopPtr AddStop(std::string stop_name, geo::Coord coords);
+    BusPtr AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip, std::string_view final_stop = {});
     void SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist);
     
     BusStat GetBusStat(std::string_view bus_name) const;

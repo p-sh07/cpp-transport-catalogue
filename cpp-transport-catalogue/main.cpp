@@ -14,8 +14,8 @@ int main() {
     RequestHandler request_handler(database, map_renderer);
     JsonReader jreader(database, request_handler);
     
-    auto& in = std::cin;
-    //ifstream in("/Users/ps/Docs/s10_final_opentest_1.json"s);
+    //auto& in = std::cin;
+    ifstream in("/Users/ps/Docs/s10_final_opentest_1.json"s);
     
     jreader.ParseInput(in, true, true);
     jreader.ProcessStatRequests();

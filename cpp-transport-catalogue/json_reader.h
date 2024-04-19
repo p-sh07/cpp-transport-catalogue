@@ -30,7 +30,7 @@ private:
     TransportDb& database_;
     const RequestHandler& req_handler_;
     std::queue<StatRequest> request_queue_;
-    json::Dict parsed_json_; //TODO: Need to store dict? or just std::move strings out when processing?
+    json::Dict parsed_json_;
     json::Array stat_request_answers_;
 
     json::Dict MakeStatJson(const BusStat& stat) const;
@@ -43,12 +43,12 @@ private:
     void ParseAndAddStops(const json::Array& database_commands, TransportDb& db) const;
     void ParseAndAddBuses(const json::Array& database_commands, TransportDb& db) const;
     RendererSettings ParseRendererSettings(const json::Dict& renderer_settings) const;
-    void ParseStatRequests(const json::Array& stat_reqs, std::queue<StatRequest>& request_queue) const;
+    void ParseStatRequests(const json::Array& stat_reqs, std::queue<StatRequest>& request_queue);
     
     
-    svg::Point ParsePoint(json::Node point_node) const;
-    svg::Color ParseColor(json::Node color_node) const;
-    std::vector<svg::Color> ParsePalette(json::Node pallete_node) const;
+    svg::Point ParsePoint(const json::Node& point_node) const;
+    svg::Color ParseColor(const json::Node& color_node) const;
+    std::vector<svg::Color> ParsePalette(const json::Node& pallete_node) const;
 };
 
 using namespace std::literals;

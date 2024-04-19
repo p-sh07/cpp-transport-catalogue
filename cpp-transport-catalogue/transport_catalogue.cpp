@@ -9,19 +9,21 @@ using std::vector;
 //using std::cerr;
 //using std::endl;
 
-void TransportDb::AddStop(std::string stop_name, geo::Coord coords) {
-    Stop* stop_to_add = new Stop(std::move(stop_name), coords);
-    stop_index_[stop_to_add->name] = stop_to_add;
+StopPtr TransportDb::AddStop(std::string stop_name, geo::Coord coords) {
+    Stop* added_stop = new Stop(std::move(stop_name), coords);
+    stop_index_[added_stop->name] = added_stop;
+    return added_stop;
 }
 
-void TransportDb::AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip, std::string_view final_stop) {
+BusPtr TransportDb::AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip, std::string_view final_stop) {
     
     //TODO: Add final_stop presence in index check?
     StopPtr final_stop_ptr = final_stop.empty() ? nullptr : stop_index_.at(final_stop);
 
-    Bus* bus_to_add = new Bus(std::move(bus_name), GetStopPtrs(stops), is_roundtrip, final_stop_ptr);
-    bus_index_[bus_to_add->name] = bus_to_add;
-    AddBusToStops(bus_to_add);
+    Bus* added_bus = new Bus(std::move(bus_name), GetStopPtrs(stops), is_roundtrip, final_stop_ptr);
+    bus_index_[added_bus->name] = added_bus;
+    AddBusToStops(added_bus);
+    return added_bus;
 }
 
 void TransportDb::SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist) {

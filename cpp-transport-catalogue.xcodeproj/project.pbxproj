@@ -17,6 +17,7 @@
 		0CB48D7D2B973ED9003E8CE2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CB48D7C2B973ED9003E8CE2 /* main.cpp */; };
 		0CB48D8C2B9758AA003E8CE2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CB48D862B9758AA003E8CE2 /* main.cpp */; };
 		0CB48D8E2B9758AA003E8CE2 /* transport_catalogue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CB48D892B9758AA003E8CE2 /* transport_catalogue.cpp */; };
+		4DBA92C72BDD446F004CD537 /* json_builder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4DBA92C52BDD446F004CD537 /* json_builder.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -51,6 +52,8 @@
 		0CB48D882B9758AA003E8CE2 /* geo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = geo.h; sourceTree = "<group>"; };
 		0CB48D892B9758AA003E8CE2 /* transport_catalogue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = transport_catalogue.cpp; sourceTree = "<group>"; };
 		0CB48D8A2B9758AA003E8CE2 /* transport_catalogue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = transport_catalogue.h; sourceTree = "<group>"; };
+		4DBA92C52BDD446F004CD537 /* json_builder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = json_builder.cpp; sourceTree = "<group>"; };
+		4DBA92C62BDD446F004CD537 /* json_builder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = json_builder.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,6 +86,8 @@
 		0CB48D7B2B973ED9003E8CE2 /* cpp-transport-catalogue */ = {
 			isa = PBXGroup;
 			children = (
+				4DBA92C52BDD446F004CD537 /* json_builder.cpp */,
+				4DBA92C62BDD446F004CD537 /* json_builder.h */,
 				0C3E11972BCC52B0006D5546 /* domain.cpp */,
 				0C3E118B2BCC52AF006D5546 /* domain.h */,
 				0C3E11952BCC52B0006D5546 /* geo.cpp */,
@@ -172,6 +177,7 @@
 				0CB48D8C2B9758AA003E8CE2 /* main.cpp in Sources */,
 				0C3E119E2BCC52B0006D5546 /* geo.cpp in Sources */,
 				0C3E119F2BCC52B0006D5546 /* domain.cpp in Sources */,
+				4DBA92C72BDD446F004CD537 /* json_builder.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

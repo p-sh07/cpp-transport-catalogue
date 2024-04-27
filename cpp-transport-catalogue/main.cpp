@@ -14,12 +14,12 @@ int main() {
     RequestHandler request_handler(database, map_renderer);
     JsonReader jreader(database, request_handler);
     
-    //auto& in = std::cin;
-    ifstream in("/Users/ps/Docs/input.json"s);
+    auto& in = std::cin;
+    //ifstream in("/Users/ps/Docs/input.json"s);
     
-    if(!in.is_open()) {
-        cerr << "Error opening input file" << endl;
-    }
+    //if(!in.is_open()) {
+     //   cerr << "Error opening input file" << endl;
+    //}
     
     jreader.ParseInput(in);
     //jreader.ProcessStatRequests();

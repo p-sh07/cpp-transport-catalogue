@@ -15,7 +15,6 @@
 		0C3E119E2BCC52B0006D5546 /* geo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C3E11952BCC52B0006D5546 /* geo.cpp */; };
 		0C3E119F2BCC52B0006D5546 /* domain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C3E11972BCC52B0006D5546 /* domain.cpp */; };
 		0CB48D7D2B973ED9003E8CE2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CB48D7C2B973ED9003E8CE2 /* main.cpp */; };
-		0CB48D8C2B9758AA003E8CE2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CB48D862B9758AA003E8CE2 /* main.cpp */; };
 		0CB48D8E2B9758AA003E8CE2 /* transport_catalogue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CB48D892B9758AA003E8CE2 /* transport_catalogue.cpp */; };
 		4DBA92C72BDD446F004CD537 /* json_builder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4DBA92C52BDD446F004CD537 /* json_builder.cpp */; };
 /* End PBXBuildFile section */
@@ -137,7 +136,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 1520;
+				LastUpgradeCheck = 1530;
 				TargetAttributes = {
 					0CB48D782B973ED9003E8CE2 = {
 						CreatedOnToolsVersion = 15.2;
@@ -174,7 +173,6 @@
 				0C3E119C2BCC52B0006D5546 /* request_handler.cpp in Sources */,
 				0CB48D8E2B9758AA003E8CE2 /* transport_catalogue.cpp in Sources */,
 				0CB48D7D2B973ED9003E8CE2 /* main.cpp in Sources */,
-				0CB48D8C2B9758AA003E8CE2 /* main.cpp in Sources */,
 				0C3E119E2BCC52B0006D5546 /* geo.cpp in Sources */,
 				0C3E119F2BCC52B0006D5546 /* domain.cpp in Sources */,
 				4DBA92C72BDD446F004CD537 /* json_builder.cpp in Sources */,
@@ -218,6 +216,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -279,6 +278,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -303,6 +303,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				DEAD_CODE_STRIPPING = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -311,6 +312,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				DEAD_CODE_STRIPPING = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

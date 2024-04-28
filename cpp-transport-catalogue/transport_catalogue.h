@@ -21,18 +21,15 @@ public:
     ~TransportDb() {
         ClearData();
     }
-    void AddStop(std::string stop_name, geo::Coord coords);
-    void AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip);
+    StopPtr AddStop(std::string stop_name, geo::Coord coords);
+    BusPtr AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip, std::string_view final_stop = {});
     void SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist);
     
     BusStat GetBusStat(std::string_view bus_name) const;
     StopStat GetStopStat(std::string_view stop_name) const;
     
-    using BusIndex = std::unordered_map<std::string_view, Bus*>;
-    using StopIndex = std::unordered_map<std::string_view, Stop*>;
-    
-    const BusIndex& GetAllBuses() const;
-    const StopIndex& GetAllStops() const;
+    BusSet  GetAllBusesWithStops() const;
+    StopSet GetAllStopsWithBuses() const;
     
 private:
     using StopPair = std::pair<StopPtr, StopPtr>;
@@ -43,14 +40,13 @@ private:
     int GetRoadDistance(StopPtr from, StopPtr to) const;
     
     std::unordered_set<StopPtr> GetUniqueStops(BusPtr) const;
-    std::set<BusPtr, BusPtrSorter> GetBusesForStop(std::string_view stop_name) const;
+    BusSet GetBusesForStop(std::string_view stop_name) const;
     std::vector<StopPtr> GetStopPtrs(const std::vector<std::string_view>& bus_stops) const;
     
     void ClearData();
     
-    StopIndex stop_index_;
-    BusIndex bus_index_;
-    
+    std::unordered_map<std::string_view, Stop*> stop_index_;
+    std::unordered_map<std::string_view, Bus*> bus_index_;
     std::unordered_map<std::string_view, std::unordered_set<std::string_view>> stops_to_buses_;
     
     struct SPHasher {

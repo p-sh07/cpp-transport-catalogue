@@ -1,176 +1,141 @@
 #include "json_reader.h"
 
+#include <sstream>
+
 using namespace std::literals;
-namespace cmd {
-
-auto BaseCmdToType(std::string literal)
-{
-    if(literal == "Stop"s) {
-        return cmd::NewStop;
-    } else if(literal == "Bus"s) {
-        return cmd::NewBus;
-    }
-    return cmd::Error;
-}
-
-auto StatCmdToType(std::string literal)
-{
-    if(literal == "Stop"s) {
-        return cmd::GetStopStat;
-    } else if(literal == "Bus"s) {
-        return cmd::GetBusStat;
-    }
-    return cmd::Error;
-}
-
-BaseCommand::BaseCommand(CommandType type, std::string name)
-: type_(type)
-, name_(std::move(name))
-{}
-
-StopData::StopData(CommandType type, std::string name,  geo::Coord coords,
-                   std::unordered_map<std::string, int> road_distances)
-: BaseCommand(type, name)
-, coords_(coords)
-, road_distances_(std::move(road_distances))
-{}
-
-bool StopData::ApplyCommand(TransportDb& database) {
-    if(type_ == cmd::NewStop) {
-        //will need the stop name again, so send a copy
-        database.AddStop(name_, coords_);
-        //if road distances are present, add them in the second pass-though
-        if(!road_distances_.empty()) {
-            type_ = cmd::AddRoadDist;
-            return false;
-        }
-    } else if(type_ == cmd::AddRoadDist) {
-        for(const auto& [to_stop, dist] : road_distances_) {
-            database.SetRoadDistance(name_, to_stop, dist);
-        }
-    }
-    return true;
-}
-
-BusData::BusData(CommandType type, std::string name, std::vector<std::string> stops, bool is_roundtrip)
-: BaseCommand(type, name)
-, stops_(std::move(stops))
-, is_roundtrip_(is_roundtrip)
-{}
-
-bool BusData::ApplyCommand(TransportDb& database) {
-    std::vector<std::string_view> bus_stops {stops_.begin(), stops_.end()};
-    //add stops in reverse order, skipping last one    
-    database.AddBus(MoveOutName(), bus_stops, is_roundtrip_);
-    //this object will be deleted after use
-    return true;
-}
-}//namespace cmd;
-
-//================ DatabaseWriter ================//
-DatabaseWriter::DatabaseWriter(TransportDb& tdb)
-: database_(tdb)
-{}
-
-void DatabaseWriter::ProcessDatabaseCommands() {
-    //cycle throug the database commands in priority order.
-    for (int i = cmd::NewStop; i < cmd::GetStopStat; ++i) {
-        for(auto it = base_requests_.begin(); it != base_requests_.end(); ) {
-            auto& cmnd = *it;
-            //ApplyCommand returns true if no more processing required
-            if(static_cast<int>(cmnd->GetType()) == i && cmnd->ApplyCommand(database_)) {
-                it = base_requests_.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
-}
 
 //================ JsonReader ================//
 JsonReader::JsonReader(TransportDb& tdb, const RequestHandler& handler)
-: DatabaseWriter(tdb)
-, request_handler_(handler)
+: database_(tdb)
+, req_handler_(handler)
 {}
 
-void JsonReader::ParseInput(std::istream& in) {
-    //gives a Map with 3 keys
-    parsed_json_ = json::Load(in).GetRoot().AsMap();
-    
-    //Build Transport Database
-    for(auto& entry : parsed_json_["base_requests"s].AsArray()) {
-        auto& Map = entry.AsMap();
+void JsonReader::ParseAndAddStops(const json::Array& database_commands, TransportDb& db) const {
+    std::unordered_map<std::string_view, std::vector<std::pair<std::string_view, int>>> stops_road_distances;
+    ///Здесь сначала задумывалось, что данные будут перемещаться из временной переменной json::Document через std::move(),
+    ///поэтому все ссылки писал неконстантными. В итоге отказался от этой идеи, чтобы сохранить валидность данных во всех полях json::Array и Dict, и случайно не сломать их при обработке.
+    ///А потом не стал добавлять, т.к. в функцию передается const json::Array& database_commands, и все ссылки внутри функции итак будут константными?
+    /// т.е. auto& entry : [const json::Array&] database_commands
+    ///      -> const json::Node& entry ?
+    ///
+    ///Но, для читаемости и ясности исправил везде, где нашел
+    for(const auto& entry : database_commands) {
+        const auto& dict = entry.AsMap();
         
-        if(Map.at("type"s).AsString() == "Stop"s) {
+        if(dict.at("type"s).AsString() == "Stop"s) {
+            
+            const std::string_view stop_name = dict.at("name"s).AsString();
+            
+            const geo::Coord stop_coords{dict.at("latitude"s).AsDouble(), dict.at("longitude"s).AsDouble()};
+            
+            db.AddStop(std::string(stop_name), stop_coords);
+            
             //build road distances map:
-            std::unordered_map<std::string, int> distances;
-            
-            for(const auto& [name, dist] : Map.at("road_distances").AsMap()) {
-                distances[name] = dist.AsInt();
+            auto& distances = stops_road_distances[stop_name];
+            for(const auto& [name, dist] : dict.at("road_distances").AsMap()) {
+                distances.push_back({name, dist.AsInt()});
             }
-            
-            //TODO: std::move on a const object, how to move string from the json?
-            cmd::StopData stop_info(cmd::NewStop,
-                std::move(Map.at("name"s).AsString()),
-                geo::Coord{Map.at("latitude"s).AsDouble(), Map.at("longitude"s).AsDouble()},
-                std::move(distances));
-            
-            base_requests_.push_back(std::make_unique<cmd::StopData>(std::move(stop_info)));
         }
-        //Process Bus Route
-        else if(Map.at("type"s).AsString() == "Bus"s) {
-            std::vector<std::string> stops;
-            for(const auto& node : Map.at("stops"s).AsArray()) {
-                stops.push_back(std::move(node.AsString()));
-            }
-            
-            cmd::BusData bus_info(cmd::NewBus, std::move(Map.at("name"s).AsString()),
-                         std::move(stops), Map.at("is_roundtrip"s).AsBool());
-            
-            base_requests_.push_back(std::make_unique<cmd::BusData>(std::move(bus_info)));
-        }
-        
     }
-    //Write stop & route data to database
-    DatabaseWriter::ProcessDatabaseCommands();
+    //2.Add Stops Road distances
+    for(const auto& [from_stop, distances] : stops_road_distances) {
+        for(const auto& [to_stop, dist] : distances) {
+            db.SetRoadDistance(from_stop, to_stop, dist);
+        }
+    }
+}
+void JsonReader::ParseAndAddBuses(const json::Array& database_commands, TransportDb& db) const {
+    //3.Add Bus Routes
+    for(const auto& entry : database_commands) {
+        const auto& dict = entry.AsMap();
+        std::string_view final_stop_name = {};
+        bool is_roundtrip = false;
+        
+        if(dict.at("type"s).AsString() == "Bus"s) {
+            is_roundtrip = dict.at("is_roundtrip"s).AsBool();
+            const auto& json_stop_arr = dict.at("stops"s).AsArray();
+            std::vector<std::string_view> stops;
+            for(const auto& node : json_stop_arr) {
+                stops.push_back(node.AsString());
+            }
+            //add stops backwards if not roundtrip
+            if(!is_roundtrip) {
+                for(auto it = std::next(json_stop_arr.rbegin()); it != json_stop_arr.rend(); ++it) {
+                    stops.push_back(it->AsString());
+                }
+                //add final stop name:
+                final_stop_name = json_stop_arr.rbegin()->AsString();
+            }
+            
+            db.AddBus(dict.at("name"s).AsString(), stops, is_roundtrip, final_stop_name);
+        }
+    }
+}
+
+RendererSettings JsonReader::ParseRendererSettings(const json::Dict& rsets) const {
+    RendererSettings settings;
     
-    //Parse and Apply Map Renderer Settings
-    {
-        auto& rs = parsed_json_["render_settings"].AsMap();
-        RendererSettings settings;
-        
-        settings.img_size.width = rs.at("width"s).AsDouble();
-        settings.img_size.height = rs.at("height"s).AsDouble();
-        
-        settings.padding = rs.at("padding"s).AsDouble();
-        
-        settings.line_width = rs.at("line_width"s).AsDouble();
-        settings.stop_radius = rs.at("stop_radius"s).AsDouble();
-        
-        settings.bus_label_font_size = rs.at("bus_label_font_size"s).AsInt();
-        settings.bus_label_offset = ParsePoint(rs.at("bus_label_offset"s));
-        //TODO: Offset is a size, not a point, possibly change
-        
-        settings.stop_label_font_size = rs.at("stop_label_font_size"s).AsDouble();
-        settings.stop_label_offset = ParsePoint(rs.at("stop_label_offset"s));
-        
-        settings.underlayer_color = ParseColor(rs.at("underlayer_color"s));
-        settings.underlayer_width = rs.at("underlayer_width"s).AsDouble();
-        
-        settings.palette = ParsePalette(rs.at("color_palette"s));
-        
-        request_handler_.UploadRendererSettings(std::make_shared<RendererSettings>(std::move(settings)));
+    settings.img_size.x = rsets.at("width"s).AsDouble();
+    settings.img_size.y = rsets.at("height"s).AsDouble();
+    
+    settings.padding = rsets.at("padding"s).AsDouble();
+    
+    settings.line_width = rsets.at("line_width"s).AsDouble();
+    settings.stop_radius = rsets.at("stop_radius"s).AsDouble();
+    
+    settings.bus_label_font_size = rsets.at("bus_label_font_size"s).AsInt();
+    settings.bus_label_offset = ParsePoint(rsets.at("bus_label_offset"s));
+    //TODO: Offset is a size, not a point, possibly change
+    
+    settings.stop_label_font_size = rsets.at("stop_label_font_size"s).AsDouble();
+    settings.stop_label_offset = ParsePoint(rsets.at("stop_label_offset"s));
+    
+    settings.underlayer_color = ParseColor(rsets.at("underlayer_color"s));
+    settings.underlayer_width = rsets.at("underlayer_width"s).AsDouble();
+    
+    settings.palette = ParsePalette(rsets.at("color_palette"s));
+    
+    return settings;
+}
+
+void JsonReader::ParseStatRequests(const json::Array& stat_reqs, std::queue<StatRequest>& request_queue) {
+    //5.Store Database Stat Requests
+    if(stat_reqs.empty()) {
+        return;
     }
-    //Store Database Stat Requests
-    for(auto& json_request : parsed_json_["stat_requests"].AsArray()) {
-        if(json_request.AsMap().empty()) {
-            throw std::runtime_error("");
+    for(const auto& json_request : stat_reqs) {
+        if(!json_request.IsMap() || json_request.AsMap().empty()) {
+            throw std::runtime_error("Empty/invalid stat request in json");
         }
-        auto& Map = json_request.AsMap();
-        cmd::StatRequest request{cmd::StatCmdToType(Map.at("type"s).AsString()), Map.at("name"s).AsString(),
-            Map.at("id"s).AsInt()};
+        const auto& request_dict = json_request.AsMap();
         
-        stat_requests_.push(std::make_unique<cmd::StatRequest>(std::move(request)));
+        const std::string_view name = request_dict.count("name"s) > 0 ? request_dict.at("name"s).AsString() : std::string_view{};
+        
+        request_queue.push({request_dict.at("type"s).AsString(), name,
+            request_dict.at("id"s).AsInt()});
+    }
+}
+
+void JsonReader::ParseInput(std::istream& in, bool has_settings, bool has_stat_requests) {
+    
+    parsed_json_ = json::Load(in).GetRoot().AsMap();
+    //1,2 & 3. Add stops, stop distances & buses
+    if(parsed_json_.count("base_requests"s) > 0) {
+        const auto& database_commands = parsed_json_.at("base_requests"s).AsArray();
+        //Build Transport Database
+        ParseAndAddStops(database_commands, database_);
+        ParseAndAddBuses(database_commands, database_);
+    }
+    //4.Parse and Apply Map Renderer Settings
+    if(has_settings && parsed_json_.count("render_settings"s) > 0) {
+        const auto& rsets = parsed_json_.at("render_settings").AsMap();
+        
+        req_handler_.UploadRendererSettings(std::make_shared<RendererSettings>(ParseRendererSettings(rsets)));
+    }
+    //5.If required, process stat requests
+    if(has_stat_requests && parsed_json_.count("stat_requests") > 0) {
+        const auto& stat_reqs = parsed_json_.at("stat_requests").AsArray();
+        ParseStatRequests(stat_reqs, request_queue_);
     }
 }
 
@@ -189,6 +154,8 @@ json::Map JsonReader::MakeStatJson(const StopStat& stat) const {
     buses.StartMap().Key("buses"s);
     auto bus_array = buses.StartArray();
     
+    ///*Для bus_ptr и других BusPtr/StopPtr не добавляю const, т.к. это const Bus* и const Stop* (объявлено через using в domain.h)
+    
     for(auto bus_ptr : stat.BusesForStop) {
         bus_array.Value(bus_ptr->name);
     }
@@ -199,14 +166,21 @@ json::Map JsonReader::MakeStatJson(const StopStat& stat) const {
     return buses.Build().AsMap();
 }
 
-svg::Point JsonReader::ParsePoint(json::Node point_node) const {
-    svg::Point pt;
-    pt.x = point_node.AsArray()[0].AsDouble();
-    pt.y = point_node.AsArray()[1].AsDouble();
-    return pt;
+void JsonReader::StoreSvgMap(std::string map, int request_id) {
+    const json::Dict answer = {
+        {"map"s, {std::string(std::move(map))}},
+        {"request_id"s, {request_id}}
+    };
+    json::Node node{answer};
+    stat_request_answers_.push_back(node);
 }
 
-svg::Color JsonReader::ParseColor(json::Node color_node) const {
+svg::Point JsonReader::ParsePoint(const json::Node& point_node) const {
+    return {point_node.AsArray()[0].AsDouble(),
+            point_node.AsArray()[1].AsDouble()};
+}
+
+svg::Color JsonReader::ParseColor(const json::Node& color_node) const {
     svg::Color result;
     
     if(color_node.IsString()) {
@@ -236,8 +210,8 @@ svg::Color JsonReader::ParseColor(json::Node color_node) const {
     }
     return result;
 }
-
-std::vector<svg::Color> JsonReader::ParsePalette(json::Node pallete_node) const {
+//comment
+std::vector<svg::Color> JsonReader::ParsePalette(const json::Node& pallete_node) const {
     std::vector<svg::Color> result;
     
     for(const auto& color_node : pallete_node.AsArray()) {
@@ -247,30 +221,26 @@ std::vector<svg::Color> JsonReader::ParsePalette(json::Node pallete_node) const 
 }
 
 void JsonReader::ProcessStatRequests() {
-    while(!stat_requests_.empty()) {
-        //TODO: std::variant<BusStat, StopStat> stats; ? maybe too complex for the task
+    while(!request_queue_.empty()) {
+        StatRequest request = std::move(request_queue_.front());
+        request_queue_.pop();
         
-        //extract the request from queue
-        auto request = std::move(stat_requests_.front());
-        stat_requests_.pop();
-        
-        if(!request) {
-            throw std::runtime_error("Stat request ptr eror");
+        if(request.type == "Bus"s) {
+            StoreRequestAnswer(req_handler_.GetBusStat(request.id, request.name));
         }
-        
-        if(request->type == cmd::GetBusStat) {
-            BusStat stat = request_handler_.GetBusStat(request->id, request->name);
-            
-            StoreRequestAnswer(stat);
+        else if(request.type == "Stop"s) {
+            StoreRequestAnswer(req_handler_.GetStopStat(request.id, request.name));
         }
-        else if(request->type == cmd::GetStopStat) {
-            StopStat stat = request_handler_.GetStopStat(request->id, request->name);
-            
-            StoreRequestAnswer(stat);
+        else if(request.type == "Map"s) {
+            std::stringstream ss;
+            req_handler_.RenderMap(ss);
+            StoreSvgMap(ss.str(), request.id);
         }
     }
 }
 
 void JsonReader::PrintRequestAnswers(std::ostream& out) const {
-    json::Print(json::Document{{request_replies_}}, out);
+    if(!stat_request_answers_.empty()) {
+        json::Print(json::Document{{stat_request_answers_}}, out);
+    }
 }

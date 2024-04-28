@@ -21,18 +21,19 @@ StopStat RequestHandler::GetStopStat(int request_id, const std::string_view& sto
     return stat;
 }
 
-void RequestHandler::UploadRendererSettings(std::shared_ptr<RendererSettings> settings) const {
+void RequestHandler::UploadRendererSettings(const std::shared_ptr<RendererSettings> settings) const {
     renderer_.LoadSettings(settings);
 }
 
 // Отрисовать карту в поток
 void RequestHandler::RenderMap(std::ostream& out) const {
-    //TODO: Add stops? OR add stops via buses in one go?
-    
-    for(const auto& [bus_name, bus_ptr] : tdb_.GetAllBuses()) {
-        renderer_.AddBus(bus_ptr);
-    }
-    renderer_.MakeProjector();
+    //returns a set, so buses will be in alphabetical order
+    renderer_.AddBusSet(tdb_.GetAllBusesWithStops());
+    //stops in alphabetical order
+    renderer_.AddStopSet(tdb_.GetAllStopsWithBuses());
+                      
+    //Init sphere projector after adding all geo points
+    renderer_.InitProjector();
     renderer_.RenderOut(out);
 }
 

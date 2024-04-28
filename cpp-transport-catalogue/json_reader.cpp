@@ -94,38 +94,38 @@ JsonReader::JsonReader(TransportDb& tdb, const RequestHandler& handler)
 {}
 
 void JsonReader::ParseInput(std::istream& in) {
-    //gives a dict with 3 keys
+    //gives a Map with 3 keys
     parsed_json_ = json::Load(in).GetRoot().AsMap();
     
     //Build Transport Database
     for(auto& entry : parsed_json_["base_requests"s].AsArray()) {
-        auto& dict = entry.AsMap();
+        auto& Map = entry.AsMap();
         
-        if(dict.at("type"s).AsString() == "Stop"s) {
+        if(Map.at("type"s).AsString() == "Stop"s) {
             //build road distances map:
             std::unordered_map<std::string, int> distances;
             
-            for(const auto& [name, dist] : dict.at("road_distances").AsMap()) {
+            for(const auto& [name, dist] : Map.at("road_distances").AsMap()) {
                 distances[name] = dist.AsInt();
             }
             
             //TODO: std::move on a const object, how to move string from the json?
             cmd::StopData stop_info(cmd::NewStop,
-                std::move(dict.at("name"s).AsString()),
-                geo::Coord{dict.at("latitude"s).AsDouble(), dict.at("longitude"s).AsDouble()},
+                std::move(Map.at("name"s).AsString()),
+                geo::Coord{Map.at("latitude"s).AsDouble(), Map.at("longitude"s).AsDouble()},
                 std::move(distances));
             
             base_requests_.push_back(std::make_unique<cmd::StopData>(std::move(stop_info)));
         }
         //Process Bus Route
-        else if(dict.at("type"s).AsString() == "Bus"s) {
+        else if(Map.at("type"s).AsString() == "Bus"s) {
             std::vector<std::string> stops;
-            for(const auto& node : dict.at("stops"s).AsArray()) {
+            for(const auto& node : Map.at("stops"s).AsArray()) {
                 stops.push_back(std::move(node.AsString()));
             }
             
-            cmd::BusData bus_info(cmd::NewBus, std::move(dict.at("name"s).AsString()),
-                         std::move(stops), dict.at("is_roundtrip"s).AsBool());
+            cmd::BusData bus_info(cmd::NewBus, std::move(Map.at("name"s).AsString()),
+                         std::move(stops), Map.at("is_roundtrip"s).AsBool());
             
             base_requests_.push_back(std::make_unique<cmd::BusData>(std::move(bus_info)));
         }
@@ -166,29 +166,37 @@ void JsonReader::ParseInput(std::istream& in) {
         if(json_request.AsMap().empty()) {
             throw std::runtime_error("");
         }
-        auto& dict = json_request.AsMap();
-        cmd::StatRequest request{cmd::StatCmdToType(dict.at("type"s).AsString()), dict.at("name"s).AsString(),
-            dict.at("id"s).AsInt()};
+        auto& Map = json_request.AsMap();
+        cmd::StatRequest request{cmd::StatCmdToType(Map.at("type"s).AsString()), Map.at("name"s).AsString(),
+            Map.at("id"s).AsInt()};
         
         stat_requests_.push(std::make_unique<cmd::StatRequest>(std::move(request)));
     }
 }
 
-json::Dict JsonReader::MakeStatJson(const BusStat& stat) const {
-    return {{"curvature"s, {stat.curvature}},
-        {"request_id"s, {stat.request_id}},
-        {"route_length"s, {stat.road_dist}},
-        {"stop_count"s, {stat.total_stops}},
-        {"unique_stop_count"s, {stat.unique_stops}} };
+json::Map JsonReader::MakeStatJson(const BusStat& stat) const {
+    return json::Builder{}.StartMap()
+           .Key("curvature"s).Value(stat.curvature)
+           .Key("request_id"s).Value(stat.request_id)
+           .Key("route_length"s).Value(stat.road_dist)
+           .Key("stop_count"s).Value(stat.total_stops)
+           .Key("unique_stop_count"s).Value(stat.unique_stops)
+           .EndMap().Build().AsMap();
 }
-json::Dict JsonReader::MakeStatJson(const StopStat& stat) const {
-    json::Array buses;
+json::Map JsonReader::MakeStatJson(const StopStat& stat) const {
+    
+    json::Builder buses;
+    buses.StartMap().Key("buses"s);
+    auto bus_array = buses.StartArray();
     
     for(auto bus_ptr : stat.BusesForStop) {
-        buses.push_back({bus_ptr->name});
+        bus_array.Value(bus_ptr->name);
     }
-    return { {"buses"s, {buses}},
-        {"request_id"s, {stat.request_id}}};
+    
+    buses = bus_array.EndArray();
+    buses.Key("request_id"s).Value(stat.request_id);
+    
+    return buses.Build().AsMap();
 }
 
 svg::Point JsonReader::ParsePoint(json::Node point_node) const {

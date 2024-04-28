@@ -33,17 +33,17 @@ Node LoadArray(std::istream& input) {
     return Node(std::move(result));
 }
 
-Node LoadDict(std::istream& input) {
-    Dict dict;
+Node LoadMap(std::istream& input) {
+    Map Map;
 
     for (char c; input >> c && c != '}';) {
         if (c == '"') {
             std::string key = LoadString(input).AsString();
             if (input >> c && c == ':') {
-                if (dict.find(key) != dict.end()) {
+                if (Map.find(key) != Map.end()) {
                     throw ParsingError("Duplicate key '"s + key + "' have been found");
                 }
-                dict.emplace(std::move(key), LoadNode(input));
+                Map.emplace(std::move(key), LoadNode(input));
             } else {
                 throw ParsingError(": is expected but '"s + c + "' has been found"s);
             }
@@ -52,9 +52,9 @@ Node LoadDict(std::istream& input) {
         }
     }
     if (!input) {
-        throw ParsingError("Dictionary parsing error"s);
+        throw ParsingError("Mapionary parsing error"s);
     }
-    return Node(std::move(dict));
+    return Node(std::move(Map));
 }
 
 Node LoadString(std::istream& input) {
@@ -199,7 +199,7 @@ Node LoadNode(std::istream& input) {
         case '[':
             return LoadArray(input);
         case '{':
-            return LoadDict(input);
+            return LoadMap(input);
         case '"':
             return LoadString(input);
         case 't':
@@ -312,7 +312,7 @@ void PrintValue<Array>(const Array& nodes, const PrintContext& ctx) {
 }
 
 template <>
-void PrintValue<Dict>(const Dict& nodes, const PrintContext& ctx) {
+void PrintValue<Map>(const Map& nodes, const PrintContext& ctx) {
     std::ostream& out = ctx.out;
     out << "{\n"sv;
     bool first = true;

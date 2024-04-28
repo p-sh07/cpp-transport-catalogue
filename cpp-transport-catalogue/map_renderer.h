@@ -20,7 +20,7 @@ public:
     template <typename PointPtrInputIt>
     SphereProjector(PointPtrInputIt points_begin, PointPtrInputIt points_end,
                     double max_width, double max_height, double padding);
-    
+
     // Проецирует широту и долготу в координаты внутри SVG-изображения
     svg::Point Transform(geo::Coord coords) const;
     

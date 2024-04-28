@@ -10,7 +10,7 @@ private:
     class KeyReturnItem;
     class KeyValReturnItem;
     class ArrayReturnItem;
-    class DictReturnItem;
+    class MapReturnItem;
     
 public:
     ///Конструктор по умолчанию
@@ -20,11 +20,11 @@ public:
     ///Передать значение в текущий Node
     Builder& Value(Node node);
     ///Начать новый соварь
-    DictReturnItem StartDict();
+    MapReturnItem StartMap();
     ///Начать новый массив
     ArrayReturnItem StartArray();
     ///Завершить текущий словарь
-    Builder& EndDict();
+    Builder& EndMap();
     ///Завершить текущий массив
     Builder& EndArray();
     ///Вернуть готовый Json
@@ -41,6 +41,7 @@ private:
     bool ValueExpected();
     ///Ожидается ключ словаря
     bool KeyExpected();
+    
 //===================== ReturnItmems =====================//
     class RetItm {
     public:
@@ -53,11 +54,11 @@ private:
         ///Передать значение в текущий Node
         void Value(Node node);
         ///Начать новый соварь
-        void StartDict();
+        void StartMap();
         ///Начать новый массив
         void StartArray();
         ///Завершить текущий словарь
-        void EndDict();
+        void EndMap();
         ///Завершить текущий массив
         void EndArray();
         //Builder& GetBuilder();
@@ -70,7 +71,7 @@ private:
         using RetItm::RetItm;
         
         KeyValReturnItem Value(Node node);
-        DictReturnItem StartDict();
+        MapReturnItem StartMap();
         ArrayReturnItem StartArray();
     };
     //После последовательности Key()->Value()->
@@ -79,15 +80,15 @@ private:
         using RetItm::RetItm;
         
         KeyReturnItem Key(std::string key);
-        Builder& EndDict();
+        Builder& EndMap();
     };
     //Возврат после создания словаря
-    class DictReturnItem : public RetItm {
+    class MapReturnItem : public RetItm {
     public:
         using RetItm::RetItm;
         
         KeyReturnItem Key(std::string key);
-        Builder& EndDict();
+        Builder& EndMap();
     };
     //Возврат после создания массива
     class ArrayReturnItem : public RetItm {
@@ -95,7 +96,7 @@ private:
         using RetItm::RetItm;
         
         ArrayReturnItem Value(Node node);
-        DictReturnItem StartDict();
+        MapReturnItem StartMap();
         ArrayReturnItem StartArray();
         Builder& EndArray();
     };

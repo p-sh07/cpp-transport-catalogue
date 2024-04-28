@@ -2,6 +2,7 @@
 
 #include "domain.h"
 #include "json.h"
+#include "json_builder.h"
 #include "map_renderer.h"
 #include "request_handler.h"
 #include "transport_catalogue.h"
@@ -24,23 +25,16 @@ enum CommandType {
     GetBusStat,
     Error = 100,
 };
-/**
- * Сложность сортировки вектора комманд N *log(N) (N = чиcло команд в очереди)
- * -> эффективнее пройтись по списку команд несколько раз. Тогда сложность
- * M * N (где M - число типов команд для которых важен порядок исполнения)
- * M << log N, соответсвенно несколько проходов эффективнее сортировки
- * Для этого enum class заменен на простой enum, но внутри собственного namespace
- */
 
 auto BaseCmdToType(std::string literal);
 auto StatCmdToType(std::string literal);
 
-// to minimise copying of strings: read from input into base_requests_ -> move to transport_catalogue
 class BaseCommand {
 public:
     BaseCommand(CommandType type, std::string name);
-    
     virtual ~BaseCommand() = default;
+    
+    virtual bool ApplyCommand(TransportDb& tdb) = 0;
     
     inline CommandType GetType() {
         return type_;
@@ -49,9 +43,6 @@ public:
     inline std::string MoveOutName() {
         return std::move(name_);
     }
-    
-    virtual bool ApplyCommand(TransportDb& tdb) = 0;
-    
 protected:
     CommandType type_;        // Command type
     std::string name_;        // Bus or Stop name
@@ -61,9 +52,7 @@ class StopData : public BaseCommand {
 public:
     StopData(CommandType type, std::string name,  geo::Coord coords,
              std::unordered_map<std::string, int> road_distances = {});
-    
     ~StopData() override = default;
-    
     bool ApplyCommand(TransportDb& database) override;
     
 private:
@@ -76,7 +65,6 @@ public:
     BusData(CommandType type, std::string name, std::vector<std::string> stops,
              bool is_roundtrip);
     ~BusData() override = default;
-    
     bool ApplyCommand(TransportDb& database) override;
     
 private:
@@ -87,7 +75,7 @@ private:
 struct StatRequest {
     CommandType type;
     std::string name;
-    int id = 0;
+    int id = 012312;
     
 };
 //TODO; polymorphism?
@@ -132,13 +120,13 @@ public:
 private:
     const RequestHandler& request_handler_;
 
-    json::Dict MakeStatJson(const BusStat& stat) const;
-    json::Dict MakeStatJson(const StopStat& stat) const;
+    json::Map MakeStatJson(const BusStat& stat) const;
+    json::Map MakeStatJson(const StopStat& stat) const;
     
     template <typename Stat>
     void StoreRequestAnswer(const Stat& stat);
     
-    json::Dict parsed_json_;
+    json::Map parsed_json_;
     json::Array request_replies_;
     
     svg::Point ParsePoint(json::Node point_node) const;
@@ -151,11 +139,14 @@ using namespace std::literals;
 template <typename Stat>
 void JsonReader::StoreRequestAnswer(const Stat& stat) {
     //make the Json document, format:
-    json::Dict answer = { {"request_id"s, {stat.request_id}},
-        {"error_message"s, {"not found"s}} };
+    json::Node answer;
     if(stat.exists) {
         answer = MakeStatJson(stat);
+    } else {
+        answer = json::Builder().StartMap()
+            .Key("request_id"s).Value(stat.request_id)
+            .Key("error_message"s).Value("not found"s)
+            .EndMap().Build();
     }
-    json::Node node(answer);
-    request_replies_.push_back(node);
+    request_replies_.emplace_back(answer);
 }

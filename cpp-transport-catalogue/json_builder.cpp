@@ -9,10 +9,10 @@ Builder::Builder()
 }
 Builder::KeyReturnItem Builder::Key(std::string key) {
     if(!KeyExpected()) {
-        throw std::logic_error("A Dict Key is not expected");
+        throw std::logic_error("A Map Key is not expected");
     }
     //add key & store ptr to value at tree top
-    auto [it, _ ] = tree_.top()->GetDict().insert({std::move(key), Node()});
+    auto [it, _ ] = tree_.top()->GetMap().insert({std::move(key), Node()});
     tree_.push(&it->second);
     
     return KeyReturnItem(*this);
@@ -29,14 +29,14 @@ Builder& Builder::Value(Node node) {
     return *this;
 }
 
-Builder::DictReturnItem Builder::StartDict() {
+Builder::MapReturnItem Builder::StartMap() {
     if(!ValueExpected()) {
-        throw std::logic_error("Cannot make a Dict");
+        throw std::logic_error("Cannot make a Map");
     }
-    if(!PushIfArray(Dict{})) {
-        tree_.top()->GetValue() = Dict{};
+    if(!PushIfArray(Map{})) {
+        tree_.top()->GetValue() = Map{};
     }
-    return DictReturnItem(*this);
+    return MapReturnItem(*this);
 }
 
 Builder::ArrayReturnItem Builder::StartArray() {
@@ -50,9 +50,9 @@ Builder::ArrayReturnItem Builder::StartArray() {
     return ArrayReturnItem(*this);
 }
 
-Builder& Builder::EndDict() {
+Builder& Builder::EndMap() {
     if(!KeyExpected() ) {
-        throw std::logic_error("Cannot Finish a Dict");
+        throw std::logic_error("Cannot Finish a Map");
     }
     tree_.pop();
     return *this;
@@ -76,7 +76,7 @@ Node Builder::Build() {
 ///Текущий Node - массив
 bool Builder::PushIfArray(Node node) {
     if(tree_.top()->IsArray()) {
-        bool push_to_stack = node.IsArray() || node.IsDict();
+        bool push_to_stack = node.IsArray() || node.IsMap();
         tree_.top()->GetArray().push_back(std::move(node));
         
         if(push_to_stack) {
@@ -94,7 +94,7 @@ bool Builder::ValueExpected() {
 
 ///Ожидается ключ словаря
 bool Builder::KeyExpected() {
-    return !tree_.empty() && tree_.top()->IsDict();
+    return !tree_.empty() && tree_.top()->IsMap();
 }
 
 
@@ -113,16 +113,16 @@ void Builder::RetItm::Value(Node node) {
     bldr_.Value(node);
 }
 ///Начать новый соварь
-void Builder::RetItm::StartDict() {
-    bldr_.StartDict();
+void Builder::RetItm::StartMap() {
+    bldr_.StartMap();
 }
 ///Начать новый массив
 void Builder::RetItm::StartArray() {
     bldr_.StartArray();
 }
 ///Завершить текущий словарь
-void Builder::RetItm::EndDict() {
-    bldr_.EndDict();
+void Builder::RetItm::EndMap() {
+    bldr_.EndMap();
 }
 ///Завершить текущий массив
 void Builder::RetItm::EndArray() {
@@ -138,9 +138,9 @@ Builder::KeyValReturnItem Builder::KeyReturnItem::Value(Node node) {
     RetItm::Value(std::move(node));
     return KeyValReturnItem(bldr_);
 }
-Builder::DictReturnItem Builder::KeyReturnItem::StartDict() {
-    RetItm::StartDict();
-    return DictReturnItem(bldr_);
+Builder::MapReturnItem Builder::KeyReturnItem::StartMap() {
+    RetItm::StartMap();
+    return MapReturnItem(bldr_);
 }
 Builder::ArrayReturnItem Builder::KeyReturnItem::StartArray() {
     RetItm::StartArray();
@@ -152,18 +152,18 @@ Builder::KeyReturnItem Builder::KeyValReturnItem::Key(std::string key) {
     RetItm::Key(std::move(key));
     return KeyReturnItem(bldr_);
 }
-Builder& Builder::KeyValReturnItem::EndDict() {
-    RetItm::EndDict();
+Builder& Builder::KeyValReturnItem::EndMap() {
+    RetItm::EndMap();
     return bldr_;
 }
 
-//after dict is started
-Builder::KeyReturnItem Builder::DictReturnItem::Key(std::string key) {
+//after Map is started
+Builder::KeyReturnItem Builder::MapReturnItem::Key(std::string key) {
     RetItm::Key(std::move(key));
     return KeyReturnItem(bldr_);
 }
-Builder& Builder::DictReturnItem::EndDict() {
-    RetItm::EndDict();
+Builder& Builder::MapReturnItem::EndMap() {
+    RetItm::EndMap();
     return bldr_;
 }
 
@@ -172,9 +172,9 @@ Builder::ArrayReturnItem Builder::ArrayReturnItem::Value(Node node) {
     RetItm::Value(std::move(node));
     return ArrayReturnItem(bldr_);
 }
-Builder::DictReturnItem Builder::ArrayReturnItem::StartDict() {
-    RetItm::StartDict();
-    return DictReturnItem(bldr_);
+Builder::MapReturnItem Builder::ArrayReturnItem::StartMap() {
+    RetItm::StartMap();
+    return MapReturnItem(bldr_);
 }
 Builder::ArrayReturnItem Builder::ArrayReturnItem::StartArray() {
     RetItm::StartArray();

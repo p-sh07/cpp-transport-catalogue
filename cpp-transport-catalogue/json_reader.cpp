@@ -145,15 +145,12 @@ json::Map JsonReader::MakeStatJson(const BusStat& stat) const {
 json::Map JsonReader::MakeStatJson(const StopStat& stat) const {
     
     json::Builder buses;
-    buses.StartMap().Key("buses"s);
-    auto bus_array = buses.StartArray();
+    buses.StartMap().Key("buses"s).StartArray();
     
     for(auto bus_ptr : stat.BusesForStop) {
-        bus_array.Value(bus_ptr->name);
+        buses.Value(bus_ptr->name);
     }
-    
-    buses = bus_array.EndArray();
-    buses.Key("request_id"s).Value(stat.request_id).EndMap();
+    buses.EndArray().Key("request_id"s).Value(stat.request_id).EndMap();
     
     return buses.Build().AsMap();
 }

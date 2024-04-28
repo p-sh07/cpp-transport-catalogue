@@ -15,10 +15,10 @@ Builder::KeyReturnItem Builder::Key(std::string key) {
     auto [it, _ ] = tree_.top()->GetMap().insert({std::move(key), Node()});
     tree_.push(&it->second);
     
-    return KeyReturnItem(*this);
+    return RetItm(*this);
 }
 
-Builder& Builder::Value(Node node) {
+Builder::RetItm Builder::Value(Node node) {
     if(!ValueExpected()) {
         throw std::logic_error("A Value is not expected");
     }
@@ -26,7 +26,7 @@ Builder& Builder::Value(Node node) {
         *tree_.top() = std::move(node);
         tree_.pop();
     }
-    return *this;
+    return RetItm(*this);
 }
 
 Builder::MapReturnItem Builder::StartMap() {
@@ -36,7 +36,7 @@ Builder::MapReturnItem Builder::StartMap() {
     if(!PushIfArray(Map{})) {
         tree_.top()->GetValue() = Map{};
     }
-    return MapReturnItem(*this);
+    return RetItm(*this);
 }
 
 Builder::ArrayReturnItem Builder::StartArray() {
@@ -47,23 +47,23 @@ Builder::ArrayReturnItem Builder::StartArray() {
         tree_.top()->GetValue() = Array{};
     }
     
-    return ArrayReturnItem(*this);
+    return RetItm(*this);
 }
 
-Builder& Builder::EndMap() {
+Builder::RetItm Builder::EndMap() {
     if(!KeyExpected() ) {
         throw std::logic_error("Cannot Finish a Map");
     }
     tree_.pop();
-    return *this;
+    return RetItm(*this);
 }
 
-Builder& Builder::EndArray() {
+Builder::RetItm Builder::EndArray() {
     if(!tree_.empty() && !tree_.top()->IsArray()) {
         throw std::logic_error("Cannot Finish an Array");
     }
     tree_.pop();
-    return *this;
+    return RetItm(*this);
 }
 
 Node Builder::Build() {
@@ -95,94 +95,6 @@ bool Builder::ValueExpected() {
 ///Ожидается ключ словаря
 bool Builder::KeyExpected() {
     return !tree_.empty() && tree_.top()->IsMap();
-}
-
-
-
-//===================== ReturnItmems =====================//
-Builder::RetItm::RetItm(Builder& bd)
-: bldr_(bd) {}
-
-///Передать ключ в текущий словарь
-void Builder::RetItm::Key(std::string key) {
-    bldr_.Key(key);
-}
-
-///Передать значение в текущий Node
-void Builder::RetItm::Value(Node node) {
-    bldr_.Value(node);
-}
-///Начать новый соварь
-void Builder::RetItm::StartMap() {
-    bldr_.StartMap();
-}
-///Начать новый массив
-void Builder::RetItm::StartArray() {
-    bldr_.StartArray();
-}
-///Завершить текущий словарь
-void Builder::RetItm::EndMap() {
-    bldr_.EndMap();
-}
-///Завершить текущий массив
-void Builder::RetItm::EndArray() {
-    bldr_.EndArray();
-}
-
-//Builder& Builder::RetItm::GetBuilder() {
-//    return bldr_;
-//}
-
-//after Key is called:
-Builder::KeyValReturnItem Builder::KeyReturnItem::Value(Node node) {
-    RetItm::Value(std::move(node));
-    return KeyValReturnItem(bldr_);
-}
-Builder::MapReturnItem Builder::KeyReturnItem::StartMap() {
-    RetItm::StartMap();
-    return MapReturnItem(bldr_);
-}
-Builder::ArrayReturnItem Builder::KeyReturnItem::StartArray() {
-    RetItm::StartArray();
-    return ArrayReturnItem(bldr_);
-}
-
-//after key->value->...
-Builder::KeyReturnItem Builder::KeyValReturnItem::Key(std::string key) {
-    RetItm::Key(std::move(key));
-    return KeyReturnItem(bldr_);
-}
-Builder& Builder::KeyValReturnItem::EndMap() {
-    RetItm::EndMap();
-    return bldr_;
-}
-
-//after Map is started
-Builder::KeyReturnItem Builder::MapReturnItem::Key(std::string key) {
-    RetItm::Key(std::move(key));
-    return KeyReturnItem(bldr_);
-}
-Builder& Builder::MapReturnItem::EndMap() {
-    RetItm::EndMap();
-    return bldr_;
-}
-
-//after array is started
-Builder::ArrayReturnItem Builder::ArrayReturnItem::Value(Node node) {
-    RetItm::Value(std::move(node));
-    return ArrayReturnItem(bldr_);
-}
-Builder::MapReturnItem Builder::ArrayReturnItem::StartMap() {
-    RetItm::StartMap();
-    return MapReturnItem(bldr_);
-}
-Builder::ArrayReturnItem Builder::ArrayReturnItem::StartArray() {
-    RetItm::StartArray();
-    return ArrayReturnItem(bldr_);
-}
-Builder& Builder::ArrayReturnItem::EndArray() {
-    RetItm::EndArray();
-    return bldr_;
 }
 
 } //namespace json

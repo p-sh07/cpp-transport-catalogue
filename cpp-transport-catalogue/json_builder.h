@@ -7,10 +7,10 @@ namespace json {
 
 class Builder {
 private:
+    class RetItm;
     class KeyReturnItem;
-    class KeyValReturnItem;
-    class ArrayReturnItem;
     class MapReturnItem;
+    class ArrayReturnItem;
     
 public:
     ///Конструктор по умолчанию
@@ -18,15 +18,15 @@ public:
     ///Передать ключ в текущий словарь
     KeyReturnItem Key(std::string key);
     ///Передать значение в текущий Node
-    Builder& Value(Node node);
+    RetItm Value(Node node);
     ///Начать новый соварь
     MapReturnItem StartMap();
     ///Начать новый массив
     ArrayReturnItem StartArray();
     ///Завершить текущий словарь
-    Builder& EndMap();
+    RetItm EndMap();
     ///Завершить текущий массив
-    Builder& EndArray();
+    RetItm EndArray();
     ///Вернуть готовый Json
     Node Build();
     
@@ -46,21 +46,31 @@ private:
     class RetItm {
     public:
         ///Конструктор по умолчанию
-        RetItm(Builder& bd);
-        //Protected для избежания вызова методов базового класса вне контекста
-    protected:
-        ///Передать ключ в текущий словарь
-        void Key(std::string key);
-        ///Передать значение в текущий Node
-        void Value(Node node);
-        ///Начать новый соварь
-        void StartMap();
-        ///Начать новый массив
-        void StartArray();
-        ///Завершить текущий словарь
-        void EndMap();
-        ///Завершить текущий массив
-        void EndArray();
+        RetItm(Builder& bd)
+        : bldr_(bd) {}
+        
+        KeyReturnItem Key(std::string key) {
+            return bldr_.Key(std::move(key));
+        }
+        RetItm Value(Node node) {
+            return bldr_.Value(std::move(node));
+        }
+        MapReturnItem StartMap() {
+            return bldr_.StartMap();
+        }
+        ArrayReturnItem StartArray() {
+            return bldr_.StartArray();
+        }
+        RetItm EndMap() {
+            return bldr_.EndMap();
+        }
+        RetItm EndArray() {
+            return bldr_.EndArray();
+        }
+        Node Build() {
+            return bldr_.Build();
+        }
+    private:
         //Builder& GetBuilder();
         Builder& bldr_;
     };
@@ -68,37 +78,43 @@ private:
     //Возврат после добавления ключа
     class KeyReturnItem : public RetItm {
     public:
-        using RetItm::RetItm;
+        KeyReturnItem(RetItm ret)
+        : RetItm(ret) {}
         
-        KeyValReturnItem Value(Node node);
-        MapReturnItem StartMap();
-        ArrayReturnItem StartArray();
-    };
-    //После последовательности Key()->Value()->
-    class KeyValReturnItem : public RetItm {
-    public:
-        using RetItm::RetItm;
+        MapReturnItem Value(Node node) {
+            return RetItm::Value(std::move(node));
+        }
         
-        KeyReturnItem Key(std::string key);
-        Builder& EndMap();
+        KeyReturnItem Key(std::string key) = delete;
+        RetItm EndMap() = delete;
+        RetItm EndArray() = delete;
+        Node Build() = delete;
     };
     //Возврат после создания словаря
     class MapReturnItem : public RetItm {
     public:
-        using RetItm::RetItm;
+        MapReturnItem(RetItm ret)
+        : RetItm(ret) {}
         
-        KeyReturnItem Key(std::string key);
-        Builder& EndMap();
+        RetItm Value(Node node) = delete;
+        MapReturnItem StartMap() = delete;
+        ArrayReturnItem StartArray() = delete;
+        RetItm EndArray() = delete;
+        Node Build() = delete;
     };
     //Возврат после создания массива
     class ArrayReturnItem : public RetItm {
     public:
-        using RetItm::RetItm;
+        ArrayReturnItem(RetItm ret)
+        : RetItm(ret) {}
         
-        ArrayReturnItem Value(Node node);
-        MapReturnItem StartMap();
-        ArrayReturnItem StartArray();
-        Builder& EndArray();
+        ArrayReturnItem Value(Node node) {
+            return RetItm::Value(std::move(node));
+        }
+
+        KeyReturnItem Key(std::string key) = delete;
+        RetItm EndMap() = delete;
+        Node Build() = delete;
     };
 };
 

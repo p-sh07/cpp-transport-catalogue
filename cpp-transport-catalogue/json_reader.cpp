@@ -12,27 +12,21 @@ JsonReader::JsonReader(TransportDb& tdb, const RequestHandler& handler)
 
 void JsonReader::ParseAndAddStops(const json::Array& database_commands, TransportDb& db) const {
     std::unordered_map<std::string_view, std::vector<std::pair<std::string_view, int>>> stops_road_distances;
-    ///Здесь сначала задумывалось, что данные будут перемещаться из временной переменной json::Document через std::move(),
-    ///поэтому все ссылки писал неконстантными. В итоге отказался от этой идеи, чтобы сохранить валидность данных во всех полях json::Array и Dict, и случайно не сломать их при обработке.
-    ///А потом не стал добавлять, т.к. в функцию передается const json::Array& database_commands, и все ссылки внутри функции итак будут константными?
-    /// т.е. auto& entry : [const json::Array&] database_commands
-    ///      -> const json::Node& entry ?
-    ///
-    ///Но, для читаемости и ясности исправил везде, где нашел
+
     for(const auto& entry : database_commands) {
-        const auto& dict = entry.AsMap();
+        const auto& map = entry.AsMap();
         
-        if(dict.at("type"s).AsString() == "Stop"s) {
+        if(map.at("type"s).AsString() == "Stop"s) {
             
-            const std::string_view stop_name = dict.at("name"s).AsString();
+            const std::string_view stop_name = map.at("name"s).AsString();
             
-            const geo::Coord stop_coords{dict.at("latitude"s).AsDouble(), dict.at("longitude"s).AsDouble()};
+            const geo::Coord stop_coords{map.at("latitude"s).AsDouble(), map.at("longitude"s).AsDouble()};
             
             db.AddStop(std::string(stop_name), stop_coords);
             
             //build road distances map:
             auto& distances = stops_road_distances[stop_name];
-            for(const auto& [name, dist] : dict.at("road_distances").AsMap()) {
+            for(const auto& [name, dist] : map.at("road_distances").AsMap()) {
                 distances.push_back({name, dist.AsInt()});
             }
         }
@@ -47,13 +41,13 @@ void JsonReader::ParseAndAddStops(const json::Array& database_commands, Transpor
 void JsonReader::ParseAndAddBuses(const json::Array& database_commands, TransportDb& db) const {
     //3.Add Bus Routes
     for(const auto& entry : database_commands) {
-        const auto& dict = entry.AsMap();
+        const auto& map = entry.AsMap();
         std::string_view final_stop_name = {};
         bool is_roundtrip = false;
         
-        if(dict.at("type"s).AsString() == "Bus"s) {
-            is_roundtrip = dict.at("is_roundtrip"s).AsBool();
-            const auto& json_stop_arr = dict.at("stops"s).AsArray();
+        if(map.at("type"s).AsString() == "Bus"s) {
+            is_roundtrip = map.at("is_roundtrip"s).AsBool();
+            const auto& json_stop_arr = map.at("stops"s).AsArray();
             std::vector<std::string_view> stops;
             for(const auto& node : json_stop_arr) {
                 stops.push_back(node.AsString());
@@ -67,12 +61,12 @@ void JsonReader::ParseAndAddBuses(const json::Array& database_commands, Transpor
                 final_stop_name = json_stop_arr.rbegin()->AsString();
             }
             
-            db.AddBus(dict.at("name"s).AsString(), stops, is_roundtrip, final_stop_name);
+            db.AddBus(map.at("name"s).AsString(), stops, is_roundtrip, final_stop_name);
         }
     }
 }
 
-RendererSettings JsonReader::ParseRendererSettings(const json::Dict& rsets) const {
+RendererSettings JsonReader::ParseRendererSettings(const json::Map& rsets) const {
     RendererSettings settings;
     
     settings.img_size.x = rsets.at("width"s).AsDouble();
@@ -107,12 +101,12 @@ void JsonReader::ParseStatRequests(const json::Array& stat_reqs, std::queue<Stat
         if(!json_request.IsMap() || json_request.AsMap().empty()) {
             throw std::runtime_error("Empty/invalid stat request in json");
         }
-        const auto& request_dict = json_request.AsMap();
+        const auto& request_map = json_request.AsMap();
         
-        const std::string_view name = request_dict.count("name"s) > 0 ? request_dict.at("name"s).AsString() : std::string_view{};
+        const std::string_view name = request_map.count("name"s) > 0 ? request_map.at("name"s).AsString() : std::string_view{};
         
-        request_queue.push({request_dict.at("type"s).AsString(), name,
-            request_dict.at("id"s).AsInt()});
+        request_queue.push({request_map.at("type"s).AsString(), name,
+            request_map.at("id"s).AsInt()});
     }
 }
 
@@ -154,20 +148,18 @@ json::Map JsonReader::MakeStatJson(const StopStat& stat) const {
     buses.StartMap().Key("buses"s);
     auto bus_array = buses.StartArray();
     
-    ///*Для bus_ptr и других BusPtr/StopPtr не добавляю const, т.к. это const Bus* и const Stop* (объявлено через using в domain.h)
-    
     for(auto bus_ptr : stat.BusesForStop) {
         bus_array.Value(bus_ptr->name);
     }
     
     buses = bus_array.EndArray();
-    buses.Key("request_id"s).Value(stat.request_id);
+    buses.Key("request_id"s).Value(stat.request_id).EndMap();
     
     return buses.Build().AsMap();
 }
 
 void JsonReader::StoreSvgMap(std::string map, int request_id) {
-    const json::Dict answer = {
+    const json::Map answer = {
         {"map"s, {std::string(std::move(map))}},
         {"request_id"s, {request_id}}
     };

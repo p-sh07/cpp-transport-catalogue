@@ -31,7 +31,7 @@ private:
     TransportDb& database_;
     const RequestHandler& req_handler_;
     std::queue<StatRequest> request_queue_;
-    json::Dict parsed_json_;
+    json::Map parsed_json_;
     json::Array stat_request_answers_;
 
     json::Map MakeStatJson(const BusStat& stat) const;
@@ -43,7 +43,7 @@ private:
     
     void ParseAndAddStops(const json::Array& database_commands, TransportDb& db) const;
     void ParseAndAddBuses(const json::Array& database_commands, TransportDb& db) const;
-    RendererSettings ParseRendererSettings(const json::Dict& renderer_settings) const;
+    RendererSettings ParseRendererSettings(const json::Map& renderer_settings) const;
     void ParseStatRequests(const json::Array& stat_reqs, std::queue<StatRequest>& request_queue);
     
     
@@ -66,5 +66,5 @@ void JsonReader::StoreRequestAnswer(const Stat& stat) {
             .Key("error_message"s).Value("not found"s)
             .EndMap().Build();
     }
-    request_replies_.emplace_back(answer);
+    stat_request_answers_.emplace_back(answer);
 }

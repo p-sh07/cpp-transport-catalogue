@@ -15,7 +15,7 @@ int main() {
     JsonReader jreader(database, request_handler);
     
     //auto& in = std::cin;
-    ifstream in("/Users/ps/Docs/s10_final_opentest_1.json"s);
+    ifstream in("/Users/ps/Documents/cpp-course/input_files/s10_final_opentest_1.json"s);
     
     jreader.ParseInput(in, true, true);
     jreader.ProcessStatRequests();

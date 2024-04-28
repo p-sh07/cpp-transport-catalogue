@@ -34,16 +34,15 @@ Node LoadArray(std::istream& input) {
 }
 
 Node LoadMap(std::istream& input) {
-    Map Map;
-
+    Map map;
     for (char c; input >> c && c != '}';) {
         if (c == '"') {
             std::string key = LoadString(input).AsString();
             if (input >> c && c == ':') {
-                if (Map.find(key) != Map.end()) {
+                if (map.find(key) != map.end()) {
                     throw ParsingError("Duplicate key '"s + key + "' have been found");
                 }
-                Map.emplace(std::move(key), LoadNode(input));
+                map.emplace(std::move(key), LoadNode(input));
             } else {
                 throw ParsingError(": is expected but '"s + c + "' has been found"s);
             }
@@ -54,7 +53,7 @@ Node LoadMap(std::istream& input) {
     if (!input) {
         throw ParsingError("Mapionary parsing error"s);
     }
-    return Node(std::move(Map));
+    return Node(std::move(map));
 }
 
 Node LoadString(std::istream& input) {

@@ -1,6 +1,7 @@
 #include "json_reader.h"
 
 #include <sstream>
+#include <fstream>
 
 using namespace std::literals;
 
@@ -67,29 +68,46 @@ void JsonReader::ParseAndAddBuses(const json::Array& database_commands, Transpor
 }
 
 RendererSettings JsonReader::ParseRendererSettings(const json::Map& rsets) const {
-    RendererSettings settings;
-    
-    settings.img_size.x = rsets.at("width"s).AsDouble();
-    settings.img_size.y = rsets.at("height"s).AsDouble();
-    
-    settings.padding = rsets.at("padding"s).AsDouble();
-    
-    settings.line_width = rsets.at("line_width"s).AsDouble();
-    settings.stop_radius = rsets.at("stop_radius"s).AsDouble();
-    
-    settings.bus_label_font_size = rsets.at("bus_label_font_size"s).AsInt();
-    settings.bus_label_offset = ParsePoint(rsets.at("bus_label_offset"s));
-    //TODO: Offset is a size, not a point, possibly change
-    
-    settings.stop_label_font_size = rsets.at("stop_label_font_size"s).AsDouble();
-    settings.stop_label_offset = ParsePoint(rsets.at("stop_label_offset"s));
-    
-    settings.underlayer_color = ParseColor(rsets.at("underlayer_color"s));
-    settings.underlayer_width = rsets.at("underlayer_width"s).AsDouble();
-    
-    settings.palette = ParsePalette(rsets.at("color_palette"s));
+    RendererSettings settings = {};
+    try{
+        settings.img_size.x = rsets.at("width"s).AsDouble();
+        settings.img_size.y = rsets.at("height"s).AsDouble();
+        
+        settings.padding = rsets.at("padding"s).AsDouble();
+        
+        settings.line_width = rsets.at("line_width"s).AsDouble();
+        settings.stop_radius = rsets.at("stop_radius"s).AsDouble();
+        
+        settings.bus_label_font_size = rsets.at("bus_label_font_size"s).AsInt();
+        settings.bus_label_offset = ParsePoint(rsets.at("bus_label_offset"s));
+        //TODO: Offset is a size, not a point, possibly change
+        
+        settings.stop_label_font_size = rsets.at("stop_label_font_size"s).AsDouble();
+        settings.stop_label_offset = ParsePoint(rsets.at("stop_label_offset"s));
+        
+        settings.underlayer_color = ParseColor(rsets.at("underlayer_color"s));
+        settings.underlayer_width = rsets.at("underlayer_width"s).AsDouble();
+        
+        settings.palette = ParsePalette(rsets.at("color_palette"s));
+    } catch(std::exception& ex) {
+        //TODO: temp debug
+    CERR_ERROR << "Missing Renderer settings error:" << ex.what() << std::endl;
+    }
     
     return settings;
+}
+
+BusRouterSettings JsonReader::ParseRouterSettings(const json::Map& rsets) const {
+    int wait_time = 0;
+    double velocity_kmh = 0;
+    try {
+        wait_time = rsets.at("bus_wait_time"s).AsInt();
+        velocity_kmh = rsets.at("bus_velocity"s).AsDouble();
+    } catch(std::exception& ex) {
+        //TODO: temp debug
+        CERR_ERROR << "Missing Router settings error:" << ex.what() << std::endl;
+    }
+    return BusRouterSettings(wait_time, velocity_kmh);
 }
 
 void JsonReader::ParseStatRequests(const json::Array& stat_reqs, std::queue<StatRequest>& request_queue) {
@@ -103,34 +121,49 @@ void JsonReader::ParseStatRequests(const json::Array& stat_reqs, std::queue<Stat
         }
         const auto& request_map = json_request.AsMap();
         
-        const std::string_view name = request_map.count("name"s) > 0 ? request_map.at("name"s).AsString() : std::string_view{};
+        StatRequest request;
+        request.id = request_map.at("id"s).AsInt();
+        request.type = request_map.at("type"s).AsString();
         
-        request_queue.push({request_map.at("type"s).AsString(), name,
-            request_map.at("id"s).AsInt()});
+        if(request.type == "Route"s) {
+            request.from = request_map.at("from"s).AsString();
+            request.to = request_map.at("to"s).AsString();
+        } else if(request.type != "Map"){
+            request.name = request_map.at("name"s).AsString();
+        }
+        request_queue.push(request);
     }
 }
 
-void JsonReader::ParseInput(std::istream& in, bool has_settings, bool has_stat_requests) {
-    
-    parsed_json_ = json::Load(in).GetRoot().AsMap();
-    //1,2 & 3. Add stops, stop distances & buses
-    if(parsed_json_.count("base_requests"s) > 0) {
-        const auto& database_commands = parsed_json_.at("base_requests"s).AsArray();
-        //Build Transport Database
-        ParseAndAddStops(database_commands, database_);
-        ParseAndAddBuses(database_commands, database_);
-    }
-    //4.Parse and Apply Map Renderer Settings
-    if(has_settings && parsed_json_.count("render_settings"s) > 0) {
-        const auto& rsets = parsed_json_.at("render_settings").AsMap();
-        
-        req_handler_.UploadRendererSettings(std::make_shared<RendererSettings>(ParseRendererSettings(rsets)));
-    }
-    //5.If required, process stat requests
-    if(has_stat_requests && parsed_json_.count("stat_requests") > 0) {
-        const auto& stat_reqs = parsed_json_.at("stat_requests").AsArray();
-        ParseStatRequests(stat_reqs, request_queue_);
-    }
+void JsonReader::ParseInput(std::istream& in) {
+//    try{
+        parsed_json_ = json::Load(in).GetRoot().AsMap();
+        //1,2 & 3. Add stops, stop distances & buses
+        if(parsed_json_.count("base_requests"s) > 0) {
+            const auto& database_commands = parsed_json_.at("base_requests"s).AsArray();
+            //Build Transport Database
+            ParseAndAddStops(database_commands, database_);
+            ParseAndAddBuses(database_commands, database_);
+        }
+        //4.Parse and Apply Map Renderer Settings
+        if(parsed_json_.count("render_settings"s) > 0) {
+            const auto& rsets = parsed_json_.at("render_settings"s).AsMap();
+            
+            req_handler_.UploadRendererSettings(std::make_shared<RendererSettings>(ParseRendererSettings(rsets)));
+        }
+        //4.Parse and Apply Router Settings
+        if(parsed_json_.count("routing_settings"s) > 0) {
+            const auto& rsets = parsed_json_.at("routing_settings"s).AsMap();
+            req_handler_.InitRouter(ParseRouterSettings(rsets));
+        }
+        //5.If required, process stat requests
+        if(parsed_json_.count("stat_requests") > 0) {
+            const auto& stat_reqs = parsed_json_.at("stat_requests"s).AsArray();
+            ParseStatRequests(stat_reqs, request_queue_);
+        }
+//    } catch(std::exception& ex) {
+//        CERR_ERROR << "Error during parcing: " << ex.what() << '\n';
+//    }
 }
 
 json::Map JsonReader::MakeStatJson(const BusStat& stat) const {
@@ -153,6 +186,30 @@ json::Map JsonReader::MakeStatJson(const StopStat& stat) const {
     buses.EndArray().Key("request_id"s).Value(stat.request_id).EndMap();
     
     return buses.Build().AsMap();
+}
+
+json::Map JsonReader::MakeStatJson(const RouteStat& stat) const {
+    json::Builder route_info;
+    route_info.StartMap()
+        .Key("request_id"s).Value(stat.request_id)
+        .Key("total_time"s).Value(stat.total_time)
+        .Key("items"s).StartArray();
+    
+    for(auto item : stat.items) {
+        route_info.StartMap();
+        route_info.Key("type"s).Value(item.type);
+        
+        if(item.type == "Wait"s) {
+            route_info.Key("stop_name"s).Value(std::string(item.name));
+        } else if(item.type == "Bus"s) {
+            route_info.Key("bus"s).Value(std::string(item.name));
+            route_info.Key("span_count"s).Value(item.span_count);
+        }
+        route_info.Key("time"s).Value(item.time_taken);
+        route_info.EndMap();
+    }
+    route_info.EndArray().EndMap();
+    return route_info.Build().AsMap();
 }
 
 void JsonReader::StoreSvgMap(std::string map, int request_id) {
@@ -214,16 +271,24 @@ void JsonReader::ProcessStatRequests() {
         StatRequest request = std::move(request_queue_.front());
         request_queue_.pop();
         
-        if(request.type == "Bus"s) {
-            StoreRequestAnswer(req_handler_.GetBusStat(request.id, request.name));
-        }
-        else if(request.type == "Stop"s) {
-            StoreRequestAnswer(req_handler_.GetStopStat(request.id, request.name));
-        }
-        else if(request.type == "Map"s) {
-            std::stringstream ss;
-            req_handler_.RenderMap(ss);
-            StoreSvgMap(ss.str(), request.id);
+        CERR << "Processing request: " << request.type << " for: " << request.name << std::endl;
+        try {
+            if(request.type == "Bus"sv) {
+                StoreRequestAnswer(req_handler_.GetBusStat(request.id, request.name));
+            }
+            else if(request.type == "Stop"sv) {
+                StoreRequestAnswer(req_handler_.GetStopStat(request.id, request.name));
+            }
+            else if(request.type == "Map"sv) {
+                std::stringstream ss;
+                req_handler_.RenderMap(ss);
+                StoreSvgMap(ss.str(), request.id);
+            }
+            else if(request.type == "Route"sv) {
+                StoreRequestAnswer(req_handler_.GetRoute(request.id, request.from, request.to));
+            }
+        } catch(std::exception& ex) {
+            std::cerr << "ERROR: ProcessStatRequests: " << ex.what() << std::endl;
         }
     }
 }

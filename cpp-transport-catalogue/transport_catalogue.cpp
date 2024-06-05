@@ -1,13 +1,13 @@
 #include "transport_catalogue.h"
 
+#include <limits>
+#include <ranges>
 using std::string;
 using std::string_view;
 using std::vector;
 
 //DEBUG
 #include <iostream>
-//using std::cerr;
-//using std::endl;
 
 StopPtr TransportDb::AddStop(std::string stop_name, geo::Coord coords) {
     Stop* added_stop = new Stop(std::move(stop_name), coords);
@@ -26,8 +26,13 @@ BusPtr TransportDb::AddBus(std::string bus_name, const std::vector<std::string_v
     return added_bus;
 }
 
-void TransportDb::SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist) {
-    road_distance_table_[{stop_index_.at(from_stop_name), stop_index_.at(to_stop_name)}] = dist;
+void TransportDb::SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist) const {
+    if(stop_index_.count(from_stop_name) > 0 && stop_index_.count(to_stop_name) > 0) {
+        road_distance_table_[{stop_index_.at(from_stop_name), stop_index_.at(to_stop_name)}] = dist;
+    } else {
+        //DEBUG:
+        CERR_ERROR << "Could not add road_dist between stops: " << from_stop_name << " & " << to_stop_name << std::endl;
+    }
 }
 
 BusStat TransportDb::GetBusStat(string_view bus_name) const {
@@ -42,12 +47,13 @@ BusStat TransportDb::GetBusStat(string_view bus_name) const {
     stat.unique_stops = static_cast<int>(GetUniqueStops(bus).size());
     
     //prev stop in bus for distance calculation
-    StopPtr prev_stop = nullptr;
+    StopPtr prev_stop = bus->stops.empty() ? nullptr : bus->stops[0];
     double bus_geo_length = 0.0;
-    
-    for(const auto& stop : bus->stops) {
+    //start at stop #2
+    for(const auto& stop : bus->stops | std::views::drop(1)) {
         bus_geo_length += GetGeoDistance(prev_stop, stop);
         stat.road_dist += GetRoadDistance(prev_stop, stop);
+
         prev_stop = stop;
     }
     stat.curvature = stat.road_dist/bus_geo_length;
@@ -94,6 +100,20 @@ StopSet TransportDb::GetAllStopsWithBuses() const {
     return stops;
 }
 
+//size_t TransportDb::GetNumBusesWithStops() const {
+//    size_t ans = 0;
+//    if(bus_index_.empty()) {
+//        return ans;
+//    }
+//    //NB: BusPtr is a const ptr
+//    for(const auto& [_, bus_ptr] : bus_index_) {
+//        if(!bus_ptr->stops.empty()) {
+//            ++ans;
+//        }
+//    }
+//    return ans;
+//}
+
 void TransportDb::AddBusToStops(BusPtr bus) {
     for(const auto& stop : bus->stops) {
         stops_to_buses_[stop->name].insert(bus->name);
@@ -103,6 +123,7 @@ void TransportDb::AddBusToStops(BusPtr bus) {
 double TransportDb::GetGeoDistance(StopPtr from, StopPtr to) const {
     //invalid stop pointers
     if(!from || !to) {
+        CERR_ERROR << "*Error, GeoDistance: invalid stop pointers passed\n";
         return 0.0;
     }
     //use pair for convenience
@@ -120,19 +141,21 @@ double TransportDb::GetGeoDistance(StopPtr from, StopPtr to) const {
 int TransportDb::GetRoadDistance(StopPtr from, StopPtr to) const {
     //invalid stop pointers
     if(!from || !to) {
+        CERR_ERROR << "*Error, RoadDistance: invalid stop pointers passed\n";
         return 0;
     }
     auto it = road_distance_table_.find({from, to});
+    
     //if from - to not found, use to - from dist
     if(it == road_distance_table_.end()) {
+        //CERR << "#Warning, RoadDistance: used Reverse Distance\n";
         it = road_distance_table_.find({to, from});
     }
     //DEBUG
     if(it == road_distance_table_.end()) {
-        std::cerr << "*TC-error* No stop distance found" << std::endl;
+        //CERR_ERROR << " ERROR: No stop distance found for stops [" << from->name << "] & [" << to->name << "]" << std::endl;
     }
-    //
-    return it == road_distance_table_.end() ? -1 : it->second;
+    return it == road_distance_table_.end() ? std::numeric_limits<int>::max() : it->second;
 }
 
 std::unordered_set<StopPtr> TransportDb::GetUniqueStops(BusPtr bus) const {

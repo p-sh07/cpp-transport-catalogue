@@ -1,11 +1,12 @@
 #include "request_handler.h"
 
-RequestHandler::RequestHandler(const TransportDb& tdb, MapRenderer& renderer)
+RequestHandler::RequestHandler(const TransportDb& tdb, MapRenderer& renderer, BusRouter& router)
 : tdb_(tdb)
 , renderer_(renderer) 
+, router_(router)
 {}
 
-BusStat RequestHandler::GetBusStat(int request_id, const std::string_view& bus_name) const {
+BusStat RequestHandler::GetBusStat(int request_id, std::string_view bus_name) const {
     //TODO - better way to assign request_id?
     auto stat = tdb_.GetBusStat(bus_name);
     stat.request_id = request_id;
@@ -13,9 +14,17 @@ BusStat RequestHandler::GetBusStat(int request_id, const std::string_view& bus_n
     return stat;
 }
 
-// Возвращает маршруты, проходящие через
-StopStat RequestHandler::GetStopStat(int request_id, const std::string_view& stop_name) const {
+// Возвращает автобусы, проходящие через stop
+StopStat RequestHandler::GetStopStat(int request_id, std::string_view stop_name) const {
     auto stat = tdb_.GetStopStat(stop_name);
+    stat.request_id = request_id;
+    
+    return stat;
+}
+
+// Построить маршрут
+RouteStat RequestHandler::GetRoute(int request_id, std::string_view from_stop, std::string_view to_stop) const {
+    auto stat = router_.PlotRoute(from_stop, to_stop);
     stat.request_id = request_id;
     
     return stat;
@@ -23,6 +32,10 @@ StopStat RequestHandler::GetStopStat(int request_id, const std::string_view& sto
 
 void RequestHandler::UploadRendererSettings(const std::shared_ptr<RendererSettings> settings) const {
     renderer_.LoadSettings(settings);
+}
+
+void RequestHandler::InitRouter(BusRouterSettings settings) const {
+    router_.Init(std::move(settings), tdb_);
 }
 
 // Отрисовать карту в поток

@@ -23,21 +23,23 @@ public:
     }
     StopPtr AddStop(std::string stop_name, geo::Coord coords);
     BusPtr AddBus(std::string bus_name, const std::vector<std::string_view>& stops, bool is_roundtrip, std::string_view final_stop = {});
-    void SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist);
+    //NB: Using const function which alters a mutable object, to be able to call in GetRoadDistance const
+    void SetRoadDistance(std::string_view from_stop_name, std::string_view to_stop_name, int dist) const;
+    
+    double GetGeoDistance(StopPtr from, StopPtr to) const;
+    int GetRoadDistance(StopPtr from, StopPtr to) const;
     
     BusStat GetBusStat(std::string_view bus_name) const;
     StopStat GetStopStat(std::string_view stop_name) const;
     
     BusSet  GetAllBusesWithStops() const;
     StopSet GetAllStopsWithBuses() const;
+//    size_t GetNumBusesWithStops() const;
     
 private:
     using StopPair = std::pair<StopPtr, StopPtr>;
     
     void AddBusToStops(BusPtr bus);
-    
-    double GetGeoDistance(StopPtr from, StopPtr to) const;
-    int GetRoadDistance(StopPtr from, StopPtr to) const;
     
     std::unordered_set<StopPtr> GetUniqueStops(BusPtr) const;
     BusSet GetBusesForStop(std::string_view stop_name) const;

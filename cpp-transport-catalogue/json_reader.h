@@ -16,16 +16,18 @@ class JsonReader {
 public:
     JsonReader(TransportDb& tdb, const RequestHandler& handler);
     
-    void ParseInput(std::istream& in, bool has_settings = false, bool has_stat_requests = false);
+    void ParseInput(std::istream& in);
     void ProcessDatabaseCommands();
     void ProcessStatRequests();
     void PrintRequestAnswers(std::ostream& out) const;
     
 private:
     struct StatRequest {
-        std::string_view type;
-        std::string_view name;
-        int id;
+        int id = 0;
+        std::string_view type = {};
+        std::string_view name = {};
+        std::string_view from = {};
+        std::string_view to   = {};
     };
     
     TransportDb& database_;
@@ -36,6 +38,7 @@ private:
 
     json::Map MakeStatJson(const BusStat& stat) const;
     json::Map MakeStatJson(const StopStat& stat) const;
+    json::Map MakeStatJson(const RouteStat& stat) const;
     
     template <typename Stat>
     void StoreRequestAnswer(const Stat& stat);
@@ -44,6 +47,7 @@ private:
     void ParseAndAddStops(const json::Array& database_commands, TransportDb& db) const;
     void ParseAndAddBuses(const json::Array& database_commands, TransportDb& db) const;
     RendererSettings ParseRendererSettings(const json::Map& renderer_settings) const;
+    BusRouterSettings ParseRouterSettings(const json::Map& router_settings) const;
     void ParseStatRequests(const json::Array& stat_reqs, std::queue<StatRequest>& request_queue);
     
     

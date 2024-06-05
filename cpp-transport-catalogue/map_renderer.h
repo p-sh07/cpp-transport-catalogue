@@ -13,6 +13,8 @@
 #include <unordered_map>
 #include <vector>
 
+using namespace std;
+
 //=================== SphereProjector ===================//
 class SphereProjector {
 public:

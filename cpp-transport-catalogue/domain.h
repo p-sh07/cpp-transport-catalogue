@@ -98,11 +98,32 @@ struct BusStat {
  }
  */
 //======================= Routing =======================//
+enum class RouteItemType {
+    wait,
+    bus,
+};
+
 struct RouteItem {
-    const std::string type;
+    RouteItemType type;
     const std::string_view name;
     double time_taken = 0.0;
     int span_count = 0;
+    
+    std::string GetTypeStr() {
+        switch (type) {
+            case RouteItemType::wait:
+                return "Wait";
+                break;
+                
+            case RouteItemType::bus:
+                return "Bus";
+                break;
+                
+            default:
+                return "";
+                break;
+        }
+    }
 };
 
 struct RouteStat {

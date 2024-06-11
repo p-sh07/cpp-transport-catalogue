@@ -34,8 +34,8 @@ void RequestHandler::UploadRendererSettings(const std::shared_ptr<RendererSettin
     renderer_.LoadSettings(settings);
 }
 
-void RequestHandler::InitRouter(BusRouterSettings settings) const {
-    router_.Init(std::move(settings), tdb_);
+void RequestHandler::UpdRouterSettings(BusRouterSettings settings) const {
+    router_.UpdSettings(std::move(settings));
 }
 
 // Отрисовать карту в поток

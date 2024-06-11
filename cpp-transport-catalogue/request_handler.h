@@ -22,7 +22,7 @@ public:
     RouteStat GetRoute(int request_id, std::string_view from_stop, std::string_view to_stop) const;
 
     void UploadRendererSettings(const std::shared_ptr<RendererSettings> settings) const;
-    void InitRouter(BusRouterSettings settings) const;
+    void UpdRouterSettings(BusRouterSettings settings) const;
     
     // Отрисовать карту в svg документ
     void RenderMap(std::ostream& out) const;

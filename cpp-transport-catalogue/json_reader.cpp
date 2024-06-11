@@ -107,7 +107,7 @@ BusRouterSettings JsonReader::ParseRouterSettings(const json::Map& rsets) const 
         //TODO: temp debug
         CERR_ERROR << "Missing Router settings error:" << ex.what() << std::endl;
     }
-    return BusRouterSettings(wait_time, velocity_kmh);
+    return {wait_time, velocity_kmh};
 }
 
 void JsonReader::ParseStatRequests(const json::Array& stat_reqs, std::queue<StatRequest>& request_queue) {
@@ -154,7 +154,7 @@ void JsonReader::ParseInput(std::istream& in) {
         //4.Parse and Apply Router Settings
         if(parsed_json_.count("routing_settings"s) > 0) {
             const auto& rsets = parsed_json_.at("routing_settings"s).AsMap();
-            req_handler_.InitRouter(ParseRouterSettings(rsets));
+            req_handler_.UpdRouterSettings(ParseRouterSettings(rsets));
         }
         //5.If required, process stat requests
         if(parsed_json_.count("stat_requests") > 0) {
@@ -197,11 +197,11 @@ json::Map JsonReader::MakeStatJson(const RouteStat& stat) const {
     
     for(auto item : stat.items) {
         route_info.StartMap();
-        route_info.Key("type"s).Value(item.type);
+        route_info.Key("type"s).Value(item.GetTypeStr());
         
-        if(item.type == "Wait"s) {
+        if(item.GetTypeStr() == "Wait"s) {
             route_info.Key("stop_name"s).Value(std::string(item.name));
-        } else if(item.type == "Bus"s) {
+        } else if(item.GetTypeStr() == "Bus"s) {
             route_info.Key("bus"s).Value(std::string(item.name));
             route_info.Key("span_count"s).Value(item.span_count);
         }

@@ -16,12 +16,6 @@ struct Edge {
     VertexId from;
     VertexId to;
     Weight weight;
-    
-//    bool operator==(const Edge<Weight>& other) const {
-//        return from == other.from
-//        && to == other.to
-//        && weight == other.weight;
-//    }
 };
 
 template <typename Weight>
